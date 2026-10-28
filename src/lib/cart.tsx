@@ -16,6 +16,8 @@ interface Cart {
   remove: (kind: LineKind, slug: string) => void;
   clear: () => void;
   announcement: string;
+  /** True once the saved bag has been read from this browser. */
+  ready: boolean;
 }
 
 const KEY = "ptx_cart_v1";
@@ -73,8 +75,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     lines,
     count: lines.length,
     total: lines.reduce((a, l) => a + linePrice(l), 0),
-    add, setQty, remove, clear, announcement,
-  }), [lines, add, setQty, remove, clear, announcement]);
+    add, setQty, remove, clear, announcement, ready: loaded,
+  }), [lines, add, setQty, remove, clear, announcement, loaded]);
 
   return (
     <Ctx.Provider value={value}>

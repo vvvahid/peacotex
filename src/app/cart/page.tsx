@@ -1,14 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { linePrice, lineName, useCart } from "@/lib/cart";
 import { COMPLEMENTS, formatPrice, getProduct, SWATCH_SIZE } from "@/lib/catalog";
 
 export default function CartPage() {
   const { lines, total, setQty, remove, clear } = useCart();
   const [placed, setPlaced] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cancelled, setCancelled] = useState(false);
   const fabric = lines.filter((l) => l.kind === "fabric");
+
+  useEffect(() => { setCancelled(new URLSearchParams(window.location.search).has("cancelled")); }, []);
+
+  // The server re-prices the bag from the catalogue and opens Stripe Checkout; we only send what was chosen.
+  const checkout = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines: lines.map(({ kind, slug, qty }) => ({ kind, slug, qty })) }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string; message?: string };
+      if (res.ok && data.url) { window.location.assign(data.url); return; }
+      if (data.error === "not_configured") setPlaced(true);
+      else setError(data.message ?? "Something went wrong. Please try again.");
+    } catch {
+      setError("No connection. Please try again.");
+    }
+    setBusy(false);
+  };
 
   if (placed) {
     return (
@@ -82,7 +107,11 @@ export default function CartPage() {
                 <Link href="/service#returns" className="text-gold underline underline-offset-4">Read the policy</Link>
               </p>
             )}
-            <button type="button" onClick={() => setPlaced(true)} className="btn btn-gold mt-6 w-full">Checkout (demo)</button>
+            <button type="button" onClick={checkout} disabled={busy} aria-describedby="checkout-msg" className="btn btn-gold mt-6 w-full">
+              {busy ? "Opening secure payment…" : "Checkout"}
+            </button>
+            <p id="checkout-msg" role="alert" className="mt-3 min-h-5 text-sm text-gold">{error ?? (cancelled ? "Payment was cancelled. Your bag is saved." : "")}</p>
+            <p className="text-xs text-mist">You pay on Stripe&apos;s secure page. Card details never reach Peacotex.</p>
             <button type="button" onClick={clear} className="mt-4 w-full text-sm text-mist underline underline-offset-4">Empty bag</button>
           </aside>
         </div>

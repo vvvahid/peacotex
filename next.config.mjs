@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Database drivers load native/WASM assets at runtime; keep them out of the bundle.
+  serverExternalPackages: ["pg", "@electric-sql/pglite"],
+  // Migrations are read from disk at runtime; ship them with every server function.
+  outputFileTracingIncludes: { "/**/*": ["./db/migrations/**/*"] },
   async headers() {
     return [
       {
