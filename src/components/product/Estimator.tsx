@@ -1,15 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Product } from "@/lib/catalog";
 import { estimate, SILHOUETTES, type Height, type Silhouette, type Sleeves } from "@/lib/estimator";
 
 const fmt = (m: number) => `${m.toFixed(2).replace(/\.?0+$/, "")} m`;
 
-export function Estimator({ p, onUse }: { p: Product; onUse: (metres: number) => void }) {
-  const [sil, setSil] = useState<Silhouette>("maxi");
-  const [height, setHeight] = useState<Height>("average");
-  const [sleeves, setSleeves] = useState<Sleeves>("none");
+export interface Fit { sil: Silhouette; height: Height; sleeves: Sleeves }
+export const DEFAULT_FIT: Fit = { sil: "maxi", height: "average", sleeves: "none" };
+
+interface Props {
+  p: Product;
+  fit: Fit;
+  onFit: (fit: Fit) => void;
+  onUse: (metres: number) => void;
+  /** Button text for the estimate, e.g. "Use 4 m" or "Add 4 m to bag". */
+  useLabel?: (metres: string) => string;
+}
+
+export function Estimator({ p, fit, onFit, onUse, useLabel = (m) => `Use ${m}` }: Props) {
+  const { sil, height, sleeves } = fit;
+  const setSil = (v: Silhouette) => onFit({ ...fit, sil: v });
+  const setHeight = (v: Height) => onFit({ ...fit, height: v });
+  const setSleeves = (v: Sleeves) => onFit({ ...fit, sleeves: v });
   const est = useMemo(() => estimate(p, sil, height, sleeves), [p, sil, height, sleeves]);
 
   const radio = <T extends string>(name: string, value: T, current: T, set: (v: T) => void, label: string, hint?: string) => (
@@ -21,7 +34,7 @@ export function Estimator({ p, onUse }: { p: Product; onUse: (metres: number) =>
   );
 
   return (
-    <div className="card grid gap-10 p-6 sm:p-10 lg:grid-cols-[1.3fr_1fr]">
+    <div className="card grid gap-10 p-6 sm:p-10 xl:grid-cols-[1.3fr_1fr]">
       <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
         <fieldset>
           <legend className="eyebrow mb-3">Dress silhouette</legend>
@@ -29,7 +42,7 @@ export function Estimator({ p, onUse }: { p: Product; onUse: (metres: number) =>
             {SILHOUETTES.map((s) => radio("sil", s.id, sil, setSil, s.label, s.hint))}
           </div>
         </fieldset>
-        <div className="grid gap-8 sm:grid-cols-2">
+        <div className="grid gap-8">
           <fieldset>
             <legend className="eyebrow mb-3">Wearer&apos;s height</legend>
             <div className="grid grid-cols-3 gap-2 text-sm">
@@ -69,7 +82,7 @@ export function Estimator({ p, onUse }: { p: Product; onUse: (metres: number) =>
             {est.notes.map((n) => <li key={n}>· {n}</li>)}
           </ul>
         )}
-        <button type="button" onClick={() => onUse(est.metres)} className="btn btn-gold mt-6 self-start">Use {fmt(est.metres)}</button>
+        <button type="button" onClick={() => onUse(est.metres)} className="btn btn-gold mt-6 self-start">{useLabel(fmt(est.metres))}</button>
         <p className="mt-3 text-xs text-mist">An estimate for a {p.widthCm} cm wide fabric. Always confirm with your dressmaker&apos;s pattern before cutting.</p>
       </div>
     </div>

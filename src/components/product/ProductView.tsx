@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { LightStage } from "@/components/product/LightStage";
-import { Estimator } from "@/components/product/Estimator";
+import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator";
+import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
 import {
   BASES, EDGES, LAYOUTS, SWATCH_PRICE, SWATCH_SIZE, TECHNIQUES, completeTheLook, formatPrice, getProduct, label,
@@ -17,6 +18,7 @@ export function ProductView({ slug }: { slug: string }) {
   const p = getProduct(slug)!;
   const { add, lines } = useCart();
   const [metres, setMetres] = useState(Math.max(p.minMetres, 2));
+  const [fit, setFit] = useState<Fit>(DEFAULT_FIT);
   const [flash, setFlash] = useState("");
   const qtyRef = useRef<HTMLInputElement>(null);
   const qtyId = useId();
@@ -140,9 +142,19 @@ export function ProductView({ slug }: { slug: string }) {
       </section>
 
       <section aria-labelledby="estimator-title" className="mt-28">
-        <p className="eyebrow">Metreage estimator</p>
-        <h2 id="estimator-title" className="mb-8 mt-3 text-[clamp(2rem,3.5vw,3rem)] font-light">How much {p.name} do you need?</h2>
-        <Estimator p={p} onUse={(m) => { setMetres(clamp(m)); qtyRef.current?.focus(); qtyRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />
+        <p className="eyebrow">See it as a dress · Metreage</p>
+        <h2 id="estimator-title" className="mb-8 mt-3 text-[clamp(2rem,3.5vw,3rem)] font-light">Picture {p.name} as your dress</h2>
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(240px,0.6fr)_minmax(0,1.4fr)]">
+          <DressFigure p={p} sil={fit.sil} sleeves={fit.sleeves} />
+          <Estimator
+            p={p} fit={fit} onFit={setFit}
+            onUse={(m) => { setMetres(clamp(m)); qtyRef.current?.focus(); qtyRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+          />
+        </div>
+        <p className="mt-4 text-xs text-mist">
+          Choose a silhouette and sleeves: the figure shows an impression of this fabric on that shape, and the estimate updates with it.
+          Move your pointer over the dress to move the light. <Link href={`/studio?fabric=${p.slug}`} className="text-gold underline underline-offset-4">Compare fabrics in the Dress studio</Link>
+        </p>
       </section>
 
       {looks.length > 0 && (
