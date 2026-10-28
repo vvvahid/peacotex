@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartProvider>
           <p className="fixed inset-x-0 top-0 z-[60] flex h-8 items-center justify-center gap-2 bg-gold px-3 text-center text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-ink">
             <span className="sm:hidden">Demo · sample products &amp; prices</span>
-            <span className="hidden sm:inline">Demo site · Sample products &amp; prices · Fabrics shown as illustrations</span>
+            <span className="hidden sm:inline">Demo site · Sample products &amp; prices · Stock photos &amp; illustrations, not our fabrics</span>
           </p>
           <Header />
           <main id="main" tabIndex={-1} className="outline-none">{children}</main>

@@ -4,38 +4,35 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { FabricRenderer, type FabricLook } from "@/lib/fabric/render";
+import { PHOTOS, authorUrl, photoSrcSet, photoUrl, type Photo } from "@/lib/photos";
 
-interface Scene { eyebrow: string; title: string; note: string; look: FabricLook }
+interface Scene { eyebrow: string; title: string; note: string; photo: Photo }
 
 const SCENES: Scene[] = [
   {
     eyebrow: "01 · Sequins", title: "Fabric that\nholds the light.",
     note: "Every sequin sits at its own angle, so the dress turns to liquid as it moves.",
-    look: { pattern: "sequins", ground: "tulle", base: "#0b0908", ink: "#9c7c48", accent: "#d6bb86", glint: "#ffe0a3", layout: "allover", edge: "straight", seed: 5 },
+    photo: PHOTOS.iridescent,
   },
   {
     eyebrow: "02 · Beading", title: "Beaded by hand,\nbead by bead.",
     note: "Seed beads, bugles and pearl hearts traced into flowers you can feel.",
-    look: { pattern: "beaded", ground: "tulle", base: "#0e0c0a", ink: "#b89a64", accent: "#f3ead9", glint: "#fff0cc", layout: "allover", edge: "straight", seed: 7 },
+    photo: PHOTOS.bridalBeading,
   },
   {
-    eyebrow: "03 · Pearls", title: "Pearls, scattered\nlike candlelight.",
-    note: "Six sizes of pearl drifting across soft tulle, for veils, overlays and full skirts.",
-    look: { pattern: "pearls", ground: "tulle", base: "#3a3128", ink: "#efe6d6", accent: "#e2cdb4", glint: "#fff8ec", layout: "allover", edge: "straight", seed: 13 },
+    eyebrow: "03 · Embroidery", title: "Thread that\nturns to gold.",
+    note: "Metallic embroidery worked into leaves and flowers that glow by candlelight.",
+    photo: PHOTOS.goldEmbroidery,
   },
   {
     eyebrow: "04 · Lace & edges", title: "Corded lace,\nfinished at the edge.",
-    note: "Corded lace and border fabrics finished at the selvedge, ready for hem and neckline.",
-    look: { pattern: "lace", ground: "tulle", base: "#0a0908", ink: "#b9ad96", accent: "#efe6d6", glint: "#fff6e6", layout: "allover", edge: "straight", seed: 17 },
+    note: "Lace and border fabrics finished at the selvedge, ready for hem and neckline.",
+    photo: PHOTOS.whiteLace,
   },
 ];
 
 const N = SCENES.length;
 const FADE = 0.2; // last part of each scene crossfades into the next
-const IDLE_MS = 6000;
-const IDLE_FRAME_MS = 50; // idle shimmer at ~20 fps; scroll-driven frames are never throttled
-const RENDER_SCALE = 1; // canvas pixels per CSS pixel: sparkle is soft anyway, and pixel fill is the main cost
 
 /** Light path inside one scene: a diagonal sweep, alternating direction per scene. */
 function lightAt(i: number, t: number) {
@@ -46,14 +43,17 @@ function lightAt(i: number, t: number) {
 }
 
 /**
- * Pinned, scroll-scrubbed hero: a light sweeps across four embellished fabrics. Scrolling drives
- * `state.progress` through a GSAP ScrollTrigger; the canvas, headlines and scene markers are
- * updated from that one number, so scrolling back plays everything in reverse.
+ * Pinned, scroll-scrubbed hero: four fabric photographs crossfade while a light sweeps across
+ * them. Scrolling drives `state.progress` through a GSAP ScrollTrigger; photos, light, headlines
+ * and scene markers all follow that one number, so scrolling back plays everything in reverse.
+ * Only transforms and opacity change per frame, which the GPU composites cheaply.
  */
 export function FabricHero() {
   const section = useRef<HTMLElement>(null);
-  const cvRef = useRef<HTMLCanvasElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const photos = useRef<(HTMLImageElement | null)[]>([]);
   const heads = useRef<(HTMLDivElement | null)[]>([]);
+  const credits = useRef<(HTMLAnchorElement | null)[]>([]);
   const marks = useRef<(HTMLButtonElement | null)[]>([]);
   const cue = useRef<HTMLDivElement>(null);
   const pool = useRef<HTMLDivElement>(null);
@@ -69,101 +69,56 @@ export function FabricHero() {
   };
 
   useEffect(() => {
-    const el = section.current, cv = cvRef.current;
-    if (!el || !cv) return;
-    const ctx = cv.getContext("2d", { alpha: false });
-    if (!ctx) return;
+    const el = section.current, st = stage.current;
+    if (!el || !st) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const mobile = window.matchMedia("(max-width: 767px)").matches;
     setReduced(reduce);
-
-    const renderers: (FabricRenderer | null)[] = SCENES.map(() => null);
     const state = { progress: 0 };
-    let raf = 0, dirty = true, visible = true, disposed = false, lastActivity = -Infinity, lastRender = 0, buildToken = 0;
-    let buildTimer = 0, cssW = 1, cssH = 1, poolScene = -1;
+    let raf = 0, dirty = true, disposed = false, w = st.clientWidth, h = st.clientHeight;
 
-    const build = () => {
-      const token = ++buildToken;
-      const dpr = RENDER_SCALE;
-      const { width, height } = cv.getBoundingClientRect();
-      cssW = width; cssH = height;
-      cv.width = Math.round(width * dpr);
-      cv.height = Math.round(height * dpr);
-      renderers.fill(null);
-      scale = mobile ? 1.15 : 1;
-      // First scene now; the rest while the browser is idle, so they are ready before the visitor scrolls to them.
-      const next = (i: number) => {
-        if (disposed || token !== buildToken || i >= N) return;
-        ensure(i);
-        if (!reduce) buildTimer = idle(() => next(i + 1));
-      };
-      next(0);
-    };
-    let scale = 1;
-    const ensure = (i: number) => {
-      if (renderers[i] || i >= N) return renderers[i];
-      renderers[i] = new FabricRenderer(SCENES[i].look, cv.width, cv.height, RENDER_SCALE, { scale });
-      dirty = true;
-      return renderers[i];
-    };
-    // Safari has no requestIdleCallback.
-    const hasIdle = typeof window.requestIdleCallback === "function";
-    const idle = (fn: () => void) => (hasIdle ? window.requestIdleCallback(fn, { timeout: 1500 }) : window.setTimeout(fn, 200));
-    const cancelIdle = (id: number) => (hasIdle ? window.cancelIdleCallback(id) : clearTimeout(id));
-
-    const render = (now: number) => {
+    const render = () => {
       dirty = false;
-      lastRender = now;
       const f = Math.min(state.progress * N, N - 1e-6);
       const i = Math.floor(f), t = f - i;
-      const drift = reduce ? 0 : Math.sin(now / 1400) * 0.015;
-      const a = ensure(i);
-      const L = reduce ? { x: 0.32, y: 0.3 } : lightAt(i, t);
-      if (a) a.draw(ctx, L.x + drift, L.y, 1, 1, false);
-      // The broad pool of light is a CSS layer: the GPU moves it for free, the canvas never blends it.
-      const p = pool.current;
-      if (p) {
-        if (poolScene !== i) { poolScene = i; p.style.setProperty("--glint", SCENES[i].look.glint); }
-        p.style.transform = `translate3d(${(L.x + drift) * cssW}px, ${L.y * cssH}px, 0) translate(-50%, -50%)`;
-      }
       const fade = i < N - 1 && t > 1 - FADE ? (t - (1 - FADE)) / FADE : 0;
-      const b = i < N - 1 && t > 1 - FADE ? ensure(i + 1) : null;
-      if (fade > 0 && b) {
-        const L2 = lightAt(i + 1, 0);
-        b.draw(ctx, L2.x + drift, L2.y, fade * fade * (3 - 2 * fade), 1, false);
-      }
-      // Headlines: visible through the middle of their scene.
-      heads.current.forEach((h, j) => {
-        if (!h) return;
+      const eased = fade * fade * (3 - 2 * fade);
+
+      photos.current.forEach((img, j) => {
+        if (!img) return;
+        const o = j === i ? 1 : j === i + 1 ? eased : 0;
+        // A slow pull-back while the scene plays.
+        img.style.opacity = String(o);
+        img.style.transform = reduce ? "none" : `scale(${1.14 - 0.1 * (j === i ? t : 0)})`;
+        img.style.visibility = o < 0.01 ? "hidden" : "visible";
+      });
+
+      const L = reduce ? { x: 0.68, y: 0.3 } : lightAt(i, t);
+      if (pool.current) pool.current.style.transform = `translate3d(${L.x * w}px, ${L.y * h}px, 0) translate(-50%, -50%)`;
+
+      heads.current.forEach((hd, j) => {
+        if (!hd) return;
         let o = 0;
         if (reduce) o = j === 0 ? 1 : 0;
         else if (j === i) o = (i === 0 ? 1 : Math.min(1, t / 0.12)) * (i === N - 1 ? 1 : Math.min(1, (1 - FADE * 0.6 - t) / 0.1));
         else if (j === i + 1 && fade > 0.6) o = (fade - 0.6) / 0.4;
         o = Math.max(0, Math.min(1, o));
-        h.style.opacity = String(o);
-        h.style.transform = `translate3d(0, ${(1 - o) * 26}px, 0)`;
-        h.style.visibility = o < 0.01 ? "hidden" : "visible";
+        hd.style.opacity = String(o);
+        hd.style.transform = `translate3d(0, ${(1 - o) * 26}px, 0)`;
+        hd.style.visibility = o < 0.01 ? "hidden" : "visible";
       });
-      marks.current.forEach((m, j) => m?.setAttribute("aria-current", j === (fade > 0.5 ? i + 1 : i) ? "step" : "false"));
+      const shown = fade > 0.5 ? i + 1 : i;
+      credits.current.forEach((c, j) => { if (c) c.style.visibility = j === shown ? "visible" : "hidden"; });
+      marks.current.forEach((m, j) => m?.setAttribute("aria-current", j === shown ? "step" : "false"));
       if (cue.current) cue.current.style.opacity = String(Math.max(0, 1 - state.progress * 12));
     };
 
-    const loop = (now: number) => {
+    const loop = () => {
       if (disposed) return;
-      const idle = !reduce && now - lastActivity < IDLE_MS && now - lastRender >= IDLE_FRAME_MS;
-      if (visible && !document.hidden && (dirty || idle)) render(now);
+      if (dirty) render();
       raf = requestAnimationFrame(loop);
     };
-
-    build();
-    let resizeTimer = 0;
-    const ro = new ResizeObserver(() => { clearTimeout(resizeTimer); resizeTimer = window.setTimeout(build, 180); });
-    ro.observe(cv);
-    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0 });
-    io.observe(el);
-    const wake = () => { lastActivity = performance.now(); };
-    const wakeEvents = ["scroll", "wheel", "pointermove", "touchstart", "keydown"] as const;
-    wakeEvents.forEach((e) => window.addEventListener(e, wake, { passive: true }));
+    const ro = new ResizeObserver(() => { w = st.clientWidth; h = st.clientHeight; dirty = true; });
+    ro.observe(st);
     raf = requestAnimationFrame(loop);
 
     let tween: gsap.core.Tween | null = null;
@@ -171,7 +126,7 @@ export function FabricHero() {
       gsap.registerPlugin(ScrollTrigger);
       tween = gsap.to(state, {
         progress: 1, ease: "none",
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.6, onUpdate: () => { dirty = true; } },
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.6 },
         onUpdate: () => { dirty = true; },
       });
       trigger.current = tween.scrollTrigger ?? null;
@@ -180,9 +135,7 @@ export function FabricHero() {
     return () => {
       disposed = true;
       cancelAnimationFrame(raf);
-      cancelIdle(buildTimer); clearTimeout(resizeTimer);
-      ro.disconnect(); io.disconnect();
-      wakeEvents.forEach((e) => window.removeEventListener(e, wake));
+      ro.disconnect();
       tween?.scrollTrigger?.kill();
       tween?.kill();
       trigger.current = null;
@@ -191,14 +144,24 @@ export function FabricHero() {
 
   return (
     <section ref={section} aria-labelledby="hero-title" className="relative" style={{ height: reduced ? "100svh" : `${N * 100 + 40}svh` }}>
-      <div className="sticky top-0 h-[100svh] overflow-hidden">
-        <canvas ref={cvRef} role="img" aria-label="Light moving across embellished fabrics: sequins, beading, pearls and lace (illustration)" className="absolute inset-0 h-full w-full" />
+      <div ref={stage} className="sticky top-0 h-[100svh] overflow-hidden bg-ink">
+        {SCENES.map((s, i) => (
+          // eslint-disable-next-line @next/next/no-img-element -- Unsplash serves resized images itself
+          <img
+            key={s.photo.id} ref={(n) => { photos.current[i] = n; }}
+            src={photoUrl(s.photo, 1800)} srcSet={photoSrcSet(s.photo)} sizes="100vw" alt={i === 0 ? s.photo.alt : ""}
+            loading={i === 0 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : undefined} decoding="async"
+            className="absolute inset-0 h-full w-full object-cover will-change-transform"
+            style={{ opacity: i === 0 ? 1 : 0, visibility: i === 0 ? "visible" : "hidden", transform: "scale(1.14)" }}
+          />
+        ))}
+        {/* The moving light: a soft highlight blended over the photos. */}
         <div
           ref={pool} aria-hidden
-          className="pointer-events-none absolute left-0 top-0 h-[170vmax] w-[170vmax] rounded-full will-change-transform"
-          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--glint, #ffe0a3) 16%, transparent) 0%, color-mix(in srgb, var(--glint, #ffe0a3) 5%, transparent) 28%, transparent 55%)", transform: "translate3d(32vw, 30vh, 0) translate(-50%, -50%)" }}
+          className="pointer-events-none absolute left-0 top-0 h-[130vmax] w-[130vmax] rounded-full mix-blend-overlay will-change-transform"
+          style={{ background: "radial-gradient(circle, rgba(255,236,200,0.75) 0%, rgba(255,236,200,0.22) 22%, rgba(0,0,0,0) 50%)", transform: "translate3d(68vw, 30vh, 0) translate(-50%, -50%)" }}
         />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0.6)_38%,rgba(11,10,9,0)_72%),linear-gradient(0deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0)_40%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0.6)_38%,rgba(11,10,9,0.1)_72%),linear-gradient(0deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0)_40%),linear-gradient(180deg,rgba(11,10,9,0.55)_0%,rgba(11,10,9,0)_22%)]" />
 
         <h1 id="hero-title" className="sr-only">Peacotex: embellished fabrics for evening and bridal dresses</h1>
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-20">
@@ -224,7 +187,7 @@ export function FabricHero() {
                 <li key={s.eyebrow}>
                   <button
                     ref={(n) => { marks.current[i] = n; }} type="button" onClick={() => jump(i)}
-                    className="group flex items-center gap-3 text-[0.6875rem] uppercase tracking-[0.2em] text-ivory/60 hover:text-gold aria-[current=step]:text-gold"
+                    className="group flex items-center gap-3 text-[0.6875rem] uppercase tracking-[0.2em] text-ivory/70 hover:text-gold aria-[current=step]:text-gold"
                     aria-current={i === 0 ? "step" : "false"}
                   >
                     <span className="h-px w-6 bg-current transition-all group-aria-[current=step]:w-12" />
@@ -236,9 +199,23 @@ export function FabricHero() {
           </nav>
         )}
 
-        <span className="chip absolute bottom-6 right-4 sm:right-8">Illustration · not a product photo</span>
+        <div className="absolute bottom-6 right-4 flex flex-col items-end gap-1.5 sm:right-8">
+          <span className="chip">Stock photo · not a Peacotex fabric</span>
+          <div className="relative h-4 w-64">
+            {SCENES.map((s, i) => (
+              <a
+                key={s.photo.id} ref={(n) => { credits.current[i] = n; }}
+                href={authorUrl(s.photo)} target="_blank" rel="noopener noreferrer"
+                className="absolute right-0 top-0 whitespace-nowrap text-[0.6875rem] text-ivory/70 hover:text-gold"
+                style={{ visibility: i === 0 ? "visible" : "hidden" }}
+              >
+                Photo: {s.photo.author} / Unsplash
+              </a>
+            ))}
+          </div>
+        </div>
         {!reduced && (
-          <div ref={cue} aria-hidden className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[0.6875rem] uppercase tracking-[0.3em] text-ivory/60 sm:flex">
+          <div ref={cue} aria-hidden className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[0.6875rem] uppercase tracking-[0.3em] text-ivory/60 lg:flex">
             Scroll to move the light
             <span className="h-8 w-px bg-gradient-to-b from-gold to-transparent" />
           </div>

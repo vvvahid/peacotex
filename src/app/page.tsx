@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { FabricHero } from "@/components/home/FabricHero";
-import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { ProductCard } from "@/components/shop/ProductCard";
 import { IntroCurtain } from "@/components/ui/IntroCurtain";
-import { OCCASIONS, PRODUCTS, SWATCH_PRICE, SWATCH_SIZE, formatPrice, getProduct } from "@/lib/catalog";
+import { StockPhoto } from "@/components/ui/StockPhoto";
+import { PHOTOS, authorUrl } from "@/lib/photos";
+import { OCCASIONS, PRODUCTS, SWATCH_PRICE, SWATCH_SIZE, formatPrice } from "@/lib/catalog";
 
-const OCCASION_LOOK = { bridal: "seraphine", engagement: "lumen", evening: "vesper", gala: "sapphira" } as const;
+const OCCASION_PHOTO = { bridal: PHOTOS.scallopLace, engagement: PHOTOS.blushLace, evening: PHOTOS.sequinDrape, gala: PHOTOS.goldGown } as const;
 
 const STEPS = [
   { n: "01", title: "Choose up to five swatches", text: `Each swatch is ${SWATCH_SIZE}, cut from the current roll so colour and shine match what you will receive. ${formatPrice(SWATCH_PRICE)} each, credited against your fabric order.` },
@@ -51,11 +52,10 @@ export default function Home() {
         </div>
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {OCCASIONS.map((o, i) => {
-            const p = getProduct(OCCASION_LOOK[o.id])!;
             return (
               <li key={o.id} className="reveal" style={{ transitionDelay: `${i * 80}ms` }}>
                 <Link href={`/shop?occasion=${o.id}`} className="card group relative block aspect-[3/4]">
-                  <FabricCanvas look={p.look} label={`${o.label} collection fabric`} followPointer rest={{ x: 0.3, y: 0.2 }} />
+                  <StockPhoto photo={OCCASION_PHOTO[o.id]} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" credit={false} />
                   <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-transparent" />
                   <span className="absolute inset-x-0 bottom-0 p-6">
                     <span className="block font-serif text-4xl font-light">{o.label}</span>
@@ -67,7 +67,15 @@ export default function Home() {
             );
           })}
         </ul>
-        <p className="mt-4 text-xs text-mist">Move your pointer over a fabric to move the light. All fabrics are illustrations until product footage is ready.</p>
+        <p className="mt-4 text-xs text-mist">
+          Stock photos, not Peacotex fabrics, until our own photography is ready. Photos on Unsplash by{" "}
+          {OCCASIONS.map((o, i) => (
+            <span key={o.id}>
+              <a href={authorUrl(OCCASION_PHOTO[o.id])} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-gold">{OCCASION_PHOTO[o.id].author}</a>
+              {i < OCCASIONS.length - 1 ? ", " : "."}
+            </span>
+          ))}
+        </p>
       </section>
 
       <section aria-labelledby="featured-title" className="border-y border-line bg-night py-28">
@@ -139,7 +147,7 @@ export default function Home() {
       <section aria-labelledby="cta-title" className="px-4 pb-24 sm:px-8">
         <div className="card relative mx-auto max-w-[1400px] overflow-hidden">
           <div className="absolute inset-0">
-            <FabricCanvas look={getProduct("aurelia")!.look} label="Champagne sequin fabric" followPointer rest={{ x: 0.75, y: 0.3 }} />
+            <StockPhoto photo={PHOTOS.redGold} sizes="100vw" label={false} credit={false} alt="" />
             <span aria-hidden className="absolute inset-0 bg-gradient-to-r from-ink via-ink/75 to-ink/10" />
           </div>
           <div className="relative px-8 py-20 sm:px-16 sm:py-28">
@@ -150,6 +158,9 @@ export default function Home() {
               <Link href="/shop" className="btn btn-gold">Choose swatches</Link>
               <Link href="/service" className="btn btn-line">Shipping &amp; returns</Link>
             </div>
+            <p className="mt-10 text-[0.6875rem] text-ivory/60">
+              Stock photo by <a href={authorUrl(PHOTOS.redGold)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-gold">{PHOTOS.redGold.author}</a> / Unsplash, not a Peacotex fabric.
+            </p>
           </div>
         </div>
       </section>

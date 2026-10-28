@@ -7,6 +7,7 @@ import { LightStage } from "@/components/product/LightStage";
 import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator";
 import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
+import { photoUrl } from "@/lib/photos";
 import {
   BASES, EDGES, LAYOUTS, SWATCH_PRICE, SWATCH_SIZE, TECHNIQUES, completeTheLook, formatPrice, getProduct, label,
 } from "@/lib/catalog";
@@ -19,6 +20,7 @@ export function ProductView({ slug }: { slug: string }) {
   const { add, lines } = useCart();
   const [metres, setMetres] = useState(Math.max(p.minMetres, 2));
   const [fit, setFit] = useState<Fit>(DEFAULT_FIT);
+  const [lens, setLens] = useState({ x: 50, y: 50 });
   const [flash, setFlash] = useState("");
   const qtyRef = useRef<HTMLInputElement>(null);
   const qtyId = useId();
@@ -120,11 +122,31 @@ export function ProductView({ slug }: { slug: string }) {
         <div>
           <p className="eyebrow">Macro detail</p>
           <h2 id="detail-title" className="mt-3 text-[clamp(2rem,3.5vw,3rem)] font-light">Up close</h2>
-          <div className="card relative mt-6 aspect-square">
-            <FabricCanvas look={{ ...p.look, layout: "allover" }} label={`${p.name}, macro detail`} scale={3} followPointer rest={{ x: 0.35, y: 0.3 }} />
-            <span className="chip absolute left-4 top-4">Macro · approx. 3× · illustration</span>
-          </div>
-          <p className="mt-3 text-xs text-mist">Move your pointer over the detail to light individual beads and sequins.</p>
+          {p.photo ? (
+            <>
+              {/* Macro lens: the full-resolution photo at 3×, panned by the pointer. */}
+              <div
+                role="img" aria-label={`${p.photo.alt}, magnified (stock photo)`}
+                className="card relative mt-6 aspect-square touch-pan-y"
+                style={{ backgroundImage: `url("${photoUrl(p.photo, 2400)}")`, backgroundSize: "300%", backgroundPosition: `${lens.x}% ${lens.y}%` }}
+                onPointerMove={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setLens({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
+                }}
+              >
+                <span className="chip absolute left-4 top-4">Macro · 3× · stock photo</span>
+              </div>
+              <p className="mt-3 text-xs text-mist">Move your pointer over the detail to look around the magnified fabric.</p>
+            </>
+          ) : (
+            <>
+              <div className="card relative mt-6 aspect-square">
+                <FabricCanvas look={{ ...p.look, layout: "allover" }} label={`${p.name}, macro detail`} scale={3} followPointer rest={{ x: 0.35, y: 0.3 }} />
+                <span className="chip absolute left-4 top-4">Macro · approx. 3× · illustration</span>
+              </div>
+              <p className="mt-3 text-xs text-mist">Move your pointer over the detail to light individual beads and sequins.</p>
+            </>
+          )}
         </div>
         <div>
           <p className="eyebrow">Specifications</p>
@@ -153,7 +175,7 @@ export function ProductView({ slug }: { slug: string }) {
         </div>
         <p className="mt-4 text-xs text-mist">
           Choose a silhouette and sleeves: the figure shows an impression of this fabric on that shape, and the estimate updates with it.
-          Move your pointer over the dress to move the light. <Link href={`/studio?fabric=${p.slug}`} className="text-gold underline underline-offset-4">Compare fabrics in the Dress studio</Link>
+          {p.photo ? "The dress uses a stock photo, not this exact fabric." : "Move your pointer over the dress to move the light."} <Link href={`/studio?fabric=${p.slug}`} className="text-gold underline underline-offset-4">Compare fabrics in the Dress studio</Link>
         </p>
       </section>
 

@@ -28,7 +28,7 @@ export function Footer() {
         </div>
         <div>
           <h2 className="eyebrow mb-4 font-sans">About this demo</h2>
-          <p className="text-sm text-mist">All fabrics are procedural illustrations. Product names, prices and specifications are sample content. No payments are taken.</p>
+          <p className="text-sm text-mist">Fabric images are stock photos from Unsplash or procedural illustrations, not Peacotex fabrics. Product names, prices and specifications are sample content. <Link href="/credits" className="underline underline-offset-2 hover:text-gold">Photo credits</Link></p>
         </div>
       </div>
       <p className="border-t border-line px-4 py-6 text-center text-xs text-mist">© {new Date().getFullYear()} Peacotex · Demo site</p>

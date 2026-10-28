@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { FabricCanvas } from "@/components/fabric/FabricCanvas";
+import { StockPhoto } from "@/components/ui/StockPhoto";
 import type { Product } from "@/lib/catalog";
 
 /** Light height follows a gentle arc as it moves across, like a lamp swung over a cutting table. */
@@ -32,8 +33,21 @@ export function LightStage({ p }: { p: Product }) {
         onPointerUp={() => { dragging.current = false; }}
         onPointerCancel={() => { dragging.current = false; }}
       >
-        <FabricCanvas look={p.look} label={`${p.name}, ${p.tagline}`} light={light} showEdge />
-        <span className="chip absolute left-4 top-4">Illustration · not a product photo</span>
+        {p.photo ? (
+          <>
+            <StockPhoto photo={p.photo} sizes="(min-width: 1024px) 55vw, 100vw" priority label="product" />
+            {/* A lamp swung over the photo: an overlay highlight that follows the slider. */}
+            <span
+              aria-hidden className="pointer-events-none absolute inset-0 mix-blend-overlay"
+              style={{ background: `radial-gradient(circle at ${light.x * 100}% ${light.y * 100}%, rgba(255,240,210,0.85) 0%, rgba(255,240,210,0.25) 22%, rgba(0,0,0,0.35) 60%)` }}
+            />
+          </>
+        ) : (
+          <>
+            <FabricCanvas look={p.look} label={`${p.name}, ${p.tagline}`} light={light} showEdge />
+            <span className="chip absolute left-4 top-4">Illustration · not a product photo</span>
+          </>
+        )}
         <span
           aria-hidden className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-gold/50"
           style={{ left: `${light.x * 100}%`, top: `${light.y * 100}%`, boxShadow: "0 0 60px 20px rgba(255,226,168,0.12)" }}

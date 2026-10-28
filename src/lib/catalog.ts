@@ -1,4 +1,5 @@
 import type { FabricLook } from "@/lib/fabric/render";
+import { PHOTOS, type Photo, type PhotoKey } from "@/lib/photos";
 
 /*
  * SAMPLE CONTENT. Every product, name, price and specification below is invented for the demo
@@ -34,6 +35,8 @@ export interface Product {
   pricePerMetre: number;
   minMetres: number;
   look: FabricLook;
+  /** Stock photo standing in until the shop's own photography exists (labelled on the site). */
+  photo?: Photo;
   featured?: boolean;
 }
 
@@ -203,6 +206,17 @@ export const PRODUCTS: Product[] = [
     look: { pattern: "beaded", ground: "chiffon", base: "#0f2a21", ink: "#3f8a6c", accent: "#d8b56e", glint: "#e6ffef", layout: "allover", edge: "straight", seed: 101 },
   },
 ];
+
+// Fabrics without a fitting stock photo keep their procedural illustration.
+const PRODUCT_PHOTOS: Record<string, PhotoKey> = {
+  aurelia: "sequinDrape", seraphine: "bridalBeading", perle: "bridalDetail", chantal: "scallopLace",
+  opaline: "blushLace", noctis: "iridescent", celeste: "goldEmbroidery", ember: "copperPaillettes",
+  sapphira: "midnight", rosalind: "emerald",
+};
+for (const prod of PRODUCTS) {
+  const key = PRODUCT_PHOTOS[prod.slug];
+  if (key) prod.photo = PHOTOS[key];
+}
 
 export const COMPLEMENTS: Complement[] = [
   { slug: "silk-tulle-lining", name: "Soft silk-feel tulle", kind: "lining", base: "tulle", colourFamilies: ["Ivory", "Blush", "Black", "Gold"], price: 28, unit: "m", note: "Underlay for beaded tulle; hides seam allowances." },

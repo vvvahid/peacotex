@@ -7,6 +7,7 @@ import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator
 import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
 import { PRODUCTS, SWATCH_PRICE, formatPrice, getProduct } from "@/lib/catalog";
+import { photoUrl } from "@/lib/photos";
 
 export function DressStudio({ initialSlug }: { initialSlug?: string }) {
   const [slug, setSlug] = useState(getProduct(initialSlug ?? "")?.slug ?? PRODUCTS[0].slug);
@@ -24,7 +25,7 @@ export function DressStudio({ initialSlug }: { initialSlug?: string }) {
     <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)]">
       <div className="lg:sticky lg:top-32">
         <DressFigure p={p} sil={fit.sil} sleeves={fit.sleeves} />
-        <p className="mt-4 text-center text-xs text-mist">Move your pointer over the dress to move the light.</p>
+        <p className="mt-4 text-center text-xs text-mist">{p.photo ? "A stock photo on a sketch: an impression of the look, not this exact fabric." : "Move your pointer over the dress to move the light."}</p>
       </div>
 
       <div className="min-w-0 space-y-10">
@@ -37,7 +38,12 @@ export function DressStudio({ initialSlug }: { initialSlug?: string }) {
                 <label key={f.slug} className={`group relative w-24 shrink-0 snap-start cursor-pointer rounded-2xl border p-1.5 sm:w-auto transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold ${on ? "border-gold" : "border-line hover:border-ivory/40"}`}>
                   <input type="radio" name="fabric" value={f.slug} checked={on} onChange={() => setSlug(f.slug)} className="sr-only" />
                   <span className="relative block aspect-square overflow-hidden rounded-xl">
-                    <FabricCanvas look={{ ...f.look, layout: "allover" }} label={f.name} rest={{ x: 0.3, y: 0.25 }} />
+                    {f.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoUrl(f.photo, 240)} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : (
+                      <FabricCanvas look={{ ...f.look, layout: "allover" }} label={f.name} rest={{ x: 0.3, y: 0.25 }} />
+                    )}
                   </span>
                   <span className={`mt-1.5 block truncate px-1 text-center text-xs ${on ? "text-gold" : "text-ivory/80"}`}>{f.name}</span>
                 </label>

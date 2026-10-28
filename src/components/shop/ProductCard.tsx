@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FabricCanvas } from "@/components/fabric/FabricCanvas";
+import { StockPhoto } from "@/components/ui/StockPhoto";
 import { formatPrice, type Product } from "@/lib/catalog";
 
 export function ProductCard({ p, headingLevel = 3 }: { p: Product; headingLevel?: 2 | 3 }) {
@@ -7,9 +8,15 @@ export function ProductCard({ p, headingLevel = 3 }: { p: Product; headingLevel?
   return (
     <article className="group relative">
       <div className="card relative aspect-[4/5]">
-        <FabricCanvas look={p.look} label={`${p.name}: ${p.tagline}`} followPointer showEdge rest={{ x: 0.28, y: 0.22 }} />
-        <span className="chip absolute left-3 top-3">Illustration</span>
-        {p.edge === "scalloped" && <span className="chip absolute right-3 top-3">Scalloped</span>}
+        {p.photo ? (
+          <StockPhoto photo={p.photo} sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw" label="product" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+        ) : (
+          <>
+            <FabricCanvas look={p.look} label={`${p.name}: ${p.tagline}`} followPointer showEdge rest={{ x: 0.28, y: 0.22 }} />
+            <span className="chip absolute left-3 top-3">Illustration</span>
+          </>
+        )}
+        {p.edge === "scalloped" && <span className="chip absolute left-3 top-11 z-[1]">Scalloped edge</span>}
       </div>
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>

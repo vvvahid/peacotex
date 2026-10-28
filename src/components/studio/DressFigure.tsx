@@ -3,6 +3,7 @@
 import { useId, useMemo } from "react";
 import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import type { Product } from "@/lib/catalog";
+import { photoUrl } from "@/lib/photos";
 import { DRESS_TOP, FIGURE, VIEW_H, VIEW_W, dressBottom, dressPath, sleevePaths } from "@/lib/dress";
 import { SILHOUETTES, type Silhouette, type Sleeves } from "@/lib/estimator";
 
@@ -57,7 +58,11 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
           maskImage: mask, WebkitMaskImage: mask, maskSize: "100% 100%", WebkitMaskSize: "100% 100%", maskRepeat: "no-repeat", WebkitMaskRepeat: "no-repeat",
         }}
       >
-        <FabricCanvas look={p.look} label={label} scale={0.42} followPointer rest={{ x: 0.7, y: 0.25 }} />
+        {p.photo ? (
+          <div role="img" aria-label={`${label} (stock photo)`} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${photoUrl(p.photo, 900)}")` }} />
+        ) : (
+          <FabricCanvas look={p.look} label={label} scale={0.42} followPointer rest={{ x: 0.7, y: 0.25 }} />
+        )}
       </div>
 
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
@@ -83,7 +88,7 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
         <path d={body} fill="none" stroke="rgba(255,240,215,.28)" strokeWidth=".9" />
         {arms.map((d) => <path key={d} d={d} fill="none" stroke="rgba(255,240,215,.18)" strokeWidth=".7" />)}
       </svg>
-      <figcaption className="chip absolute left-0 top-0">Illustration · impression only</figcaption>
+      <figcaption className="chip absolute left-0 top-0">{p.photo ? "Stock photo on a sketch · impression only" : "Illustration · impression only"}</figcaption>
     </figure>
   );
 }
