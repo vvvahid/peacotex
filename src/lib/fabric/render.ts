@@ -111,6 +111,22 @@ const discSprite = (col: RGB, kind: "sequin" | "bead" | "pearl") =>
     }
   });
 
+/** A disc sprite with its cast shadow (beads, pearls) or tilt shading (sequins) baked in, drawn 1.25× the element radius. */
+const bodySprite = (col: RGB, kind: "sequin" | "bead" | "pearl", shade = 0) =>
+  sprite(80, (g) => {
+    if (kind !== "sequin") {
+      g.fillStyle = "rgba(0,0,0,0.35)";
+      g.beginPath(); g.arc(40 + 6.4, 40 + 9.6, 30.4, 0, Math.PI * 2); g.fill();
+    }
+    g.drawImage(discSprite(col, kind), 8, 8, 64, 64);
+    if (shade > 0) {
+      g.fillStyle = `rgba(0,0,0,${shade})`;
+      g.beginPath(); g.arc(40, 40, 31, 0, Math.PI * 2); g.fill();
+    }
+  });
+
+const SHADES = 6;
+
 const glintSprite = (col: RGB) =>
   sprite(64, (g, s) => {
     const r = s / 2;
@@ -402,10 +418,12 @@ export class FabricRenderer {
     const ink = hex(look.ink), acc = hex(look.accent ?? look.ink);
     // Pale sequins (ivory, silver) read grey if shaded as hard as dark ones.
     const shadeMax = (0.299 * ink[0] + 0.587 * ink[1] + 0.114 * ink[2]) / 255 > 0.6 ? 0.22 : 0.7;
+    // Sequins: a few pre-shaded variants instead of a shading pass per sequin.
+    const shades = (col: RGB) => Array.from({ length: SHADES }, (_, i) => bodySprite(col, "sequin", (0.03 + (i / (SHADES - 1)) * (shadeMax - 0.03))));
+    const sequinSprites = [shades(ink), shades(acc)];
     const sprites = {
-      [K.Sequin]: [discSprite(ink, "sequin"), discSprite(acc, "sequin")],
-      [K.Bead]: [discSprite(ink, "bead"), discSprite(acc, "bead")],
-      [K.Pearl]: [discSprite(ink, "pearl"), discSprite(acc, "pearl")],
+      [K.Bead]: [bodySprite(ink, "bead"), bodySprite(acc, "bead")],
+      [K.Pearl]: [bodySprite(ink, "pearl"), bodySprite(acc, "pearl")],
     };
 
     // Lace cords: shadow, body, then a thin raised highlight for the corded relief.
@@ -426,20 +444,13 @@ export class FabricRenderer {
     }
 
     for (const e of els) {
-      const set = e.k === K.Sequin || e.k === K.Bead || e.k === K.Pearl ? sprites[e.k] : null;
-      if (set) {
-        const s = set[e.acc ? 1 : 0];
-        if (e.k !== K.Sequin) {
-          g.fillStyle = "rgba(0,0,0,0.35)";
-          g.beginPath(); g.arc(e.x + e.r * 0.2, e.y + e.r * 0.3, e.r * 0.95, 0, Math.PI * 2); g.fill();
-        }
-        g.drawImage(s, e.x - e.r, e.y - e.r, e.r * 2, e.r * 2);
-        if (e.k === K.Sequin) {
-          // Diffuse tone follows the sequin's tilt, so the resting fabric shows soft bands.
-          const dark = Math.min(shadeMax, Math.max(0.03, (0.38 + (e.nx * 0.6 + e.ny * 0.8) * 0.35) * (shadeMax / 0.7)));
-          g.fillStyle = `rgba(0,0,0,${dark})`;
-          g.beginPath(); g.arc(e.x, e.y, e.r * 0.97, 0, Math.PI * 2); g.fill();
-        }
+      if (e.k === K.Sequin) {
+        // Diffuse tone follows the sequin's tilt, so the resting fabric shows soft bands.
+        const t = Math.min(1, Math.max(0, 0.38 + (e.nx * 0.6 + e.ny * 0.8) * 0.35) / 0.7);
+        const s = sequinSprites[e.acc ? 1 : 0][Math.round(t * (SHADES - 1))];
+        g.drawImage(s, e.x - e.r * 1.25, e.y - e.r * 1.25, e.r * 2.5, e.r * 2.5);
+      } else if (e.k === K.Bead || e.k === K.Pearl) {
+        g.drawImage(sprites[e.k][e.acc ? 1 : 0], e.x - e.r * 1.25, e.y - e.r * 1.25, e.r * 2.5, e.r * 2.5);
       } else if (e.k === K.Bugle || e.k === K.Thread) {
         const c = Math.cos(e.a) * e.r, s = Math.sin(e.a) * e.r;
         g.lineCap = "round";
@@ -453,8 +464,12 @@ export class FabricRenderer {
     this.base = base;
   }
 
-  /** Draw the fabric lit from (lx, ly), given as fractions of the canvas (may run outside 0..1). */
-  draw(ctx: CanvasRenderingContext2D, lx: number, ly: number, alpha = 1, intensity = 1) {
+  /**
+   * Draw the fabric lit from (lx, ly), given as fractions of the canvas (may run outside 0..1).
+   * `pool: false` skips the broad light pool, a full-canvas blend that large canvases should
+   * leave to a GPU-composited CSS layer instead.
+   */
+  draw(ctx: CanvasRenderingContext2D, lx: number, ly: number, alpha = 1, intensity = 1, pool = true) {
     const { w: W, h: H } = this;
     const Lx = lx * W, Ly = ly * H, R = Math.hypot(W, H) * 0.5;
     ctx.save();
@@ -462,14 +477,15 @@ export class FabricRenderer {
     ctx.drawImage(this.base, 0, 0);
     if (this.clip) ctx.clip(this.clip);
 
-    // Broad pool of light on the ground.
-    ctx.globalCompositeOperation = "screen";
-    const pool = ctx.createRadialGradient(Lx, Ly, 0, Lx, Ly, R * 0.85);
-    pool.addColorStop(0, rgba(this.glintRGB, 0.12 * intensity));
-    pool.addColorStop(0.5, rgba(this.glintRGB, 0.035 * intensity));
-    pool.addColorStop(1, rgba(this.glintRGB, 0));
-    ctx.fillStyle = pool;
-    ctx.fillRect(0, 0, W, H);
+    if (pool) {
+      ctx.globalCompositeOperation = "screen";
+      const g = ctx.createRadialGradient(Lx, Ly, 0, Lx, Ly, R * 0.85);
+      g.addColorStop(0, rgba(this.glintRGB, 0.12 * intensity));
+      g.addColorStop(0.5, rgba(this.glintRGB, 0.035 * intensity));
+      g.addColorStop(1, rgba(this.glintRGB, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
 
     ctx.globalCompositeOperation = "lighter";
     const glint = this.glint, star = this.star;
@@ -478,9 +494,9 @@ export class FabricRenderer {
       const dx = (Lx - e.x) / R, dy = (Ly - e.y) / R;
       const ex = dx - e.nx, ey = dy - e.ny;
       const sp = SPEC[e.k];
-      const near = 0.35 + 0.65 * Math.exp(-(dx * dx + dy * dy) / 0.4);
+      const near = 0.3 + 0.7 * Math.exp(-(dx * dx + dy * dy) / 0.4);
       const b = sp.amp * Math.exp(-(ex * ex + ey * ey) / sp.s2) * near * intensity;
-      if (b < 0.025) continue;
+      if (b < 0.05) continue;
       ctx.globalAlpha = Math.min(1, b) * alpha;
       if (e.k === K.Bugle || e.k === K.Thread) {
         const c = Math.cos(e.a), s = Math.sin(e.a);

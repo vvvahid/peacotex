@@ -51,7 +51,7 @@ export function FabricCanvas({ look, label, className, light, followPointer, res
     const build = () => {
       const { width, height } = cv.getBoundingClientRect();
       if (width < 2 || height < 2) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       cv.width = Math.round(width * dpr);
       cv.height = Math.round(height * dpr);
       renderer = new FabricRenderer(look, cv.width, cv.height, dpr, { scale, showEdge, backdrop });

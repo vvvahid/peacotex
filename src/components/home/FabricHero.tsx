@@ -34,11 +34,13 @@ const SCENES: Scene[] = [
 const N = SCENES.length;
 const FADE = 0.2; // last part of each scene crossfades into the next
 const IDLE_MS = 6000;
+const IDLE_FRAME_MS = 50; // idle shimmer at ~20 fps; scroll-driven frames are never throttled
+const RENDER_SCALE = 1; // canvas pixels per CSS pixel: sparkle is soft anyway, and pixel fill is the main cost
 
 /** Light path inside one scene: a diagonal sweep, alternating direction per scene. */
 function lightAt(i: number, t: number) {
-  const dir = i % 2 ? -1 : 1;
-  const x = 0.5 + dir * (-0.62 + 1.24 * t);
+  const dir = i % 2 ? 1 : -1; // scene 1 starts on the right, clear of the headline
+  const x = 0.5 + dir * (-0.42 + 0.9 * t);
   const y = 0.18 + 0.55 * t + 0.08 * Math.sin(t * Math.PI * 2);
   return { x, y };
 }
@@ -54,6 +56,7 @@ export function FabricHero() {
   const heads = useRef<(HTMLDivElement | null)[]>([]);
   const marks = useRef<(HTMLButtonElement | null)[]>([]);
   const cue = useRef<HTMLDivElement>(null);
+  const pool = useRef<HTMLDivElement>(null);
   const trigger = useRef<ScrollTrigger | null>(null);
   const [reduced, setReduced] = useState(false);
 
@@ -76,40 +79,58 @@ export function FabricHero() {
 
     const renderers: (FabricRenderer | null)[] = SCENES.map(() => null);
     const state = { progress: 0 };
-    let raf = 0, dirty = true, visible = true, disposed = false, lastActivity = -Infinity, buildToken = 0;
-    let buildTimer = 0;
+    let raf = 0, dirty = true, visible = true, disposed = false, lastActivity = -Infinity, lastRender = 0, buildToken = 0;
+    let buildTimer = 0, cssW = 1, cssH = 1, poolScene = -1;
 
     const build = () => {
       const token = ++buildToken;
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = RENDER_SCALE;
       const { width, height } = cv.getBoundingClientRect();
+      cssW = width; cssH = height;
       cv.width = Math.round(width * dpr);
       cv.height = Math.round(height * dpr);
       renderers.fill(null);
-      const scale = mobile ? 1.15 : 1;
-      // First scene now, the rest one per task so the main thread stays responsive.
+      scale = mobile ? 1.15 : 1;
+      // First scene now; the rest while the browser is idle, so they are ready before the visitor scrolls to them.
       const next = (i: number) => {
         if (disposed || token !== buildToken || i >= N) return;
-        renderers[i] = new FabricRenderer(SCENES[i].look, cv.width, cv.height, dpr, { scale });
-        dirty = true;
-        if (!reduce) buildTimer = window.setTimeout(() => next(i + 1), 60);
+        ensure(i);
+        if (!reduce) buildTimer = idle(() => next(i + 1));
       };
       next(0);
     };
+    let scale = 1;
+    const ensure = (i: number) => {
+      if (renderers[i] || i >= N) return renderers[i];
+      renderers[i] = new FabricRenderer(SCENES[i].look, cv.width, cv.height, RENDER_SCALE, { scale });
+      dirty = true;
+      return renderers[i];
+    };
+    // Safari has no requestIdleCallback.
+    const hasIdle = typeof window.requestIdleCallback === "function";
+    const idle = (fn: () => void) => (hasIdle ? window.requestIdleCallback(fn, { timeout: 1500 }) : window.setTimeout(fn, 200));
+    const cancelIdle = (id: number) => (hasIdle ? window.cancelIdleCallback(id) : clearTimeout(id));
 
     const render = (now: number) => {
       dirty = false;
+      lastRender = now;
       const f = Math.min(state.progress * N, N - 1e-6);
       const i = Math.floor(f), t = f - i;
       const drift = reduce ? 0 : Math.sin(now / 1400) * 0.015;
-      const a = renderers[i] ?? renderers[0];
+      const a = ensure(i);
       const L = reduce ? { x: 0.32, y: 0.3 } : lightAt(i, t);
-      if (a) a.draw(ctx, L.x + drift, L.y, 1);
+      if (a) a.draw(ctx, L.x + drift, L.y, 1, 1, false);
+      // The broad pool of light is a CSS layer: the GPU moves it for free, the canvas never blends it.
+      const p = pool.current;
+      if (p) {
+        if (poolScene !== i) { poolScene = i; p.style.setProperty("--glint", SCENES[i].look.glint); }
+        p.style.transform = `translate3d(${(L.x + drift) * cssW}px, ${L.y * cssH}px, 0) translate(-50%, -50%)`;
+      }
       const fade = i < N - 1 && t > 1 - FADE ? (t - (1 - FADE)) / FADE : 0;
-      const b = renderers[i + 1];
+      const b = i < N - 1 && t > 1 - FADE ? ensure(i + 1) : null;
       if (fade > 0 && b) {
         const L2 = lightAt(i + 1, 0);
-        b.draw(ctx, L2.x + drift, L2.y, fade * fade * (3 - 2 * fade));
+        b.draw(ctx, L2.x + drift, L2.y, fade * fade * (3 - 2 * fade), 1, false);
       }
       // Headlines: visible through the middle of their scene.
       heads.current.forEach((h, j) => {
@@ -129,7 +150,7 @@ export function FabricHero() {
 
     const loop = (now: number) => {
       if (disposed) return;
-      const idle = !reduce && now - lastActivity < IDLE_MS;
+      const idle = !reduce && now - lastActivity < IDLE_MS && now - lastRender >= IDLE_FRAME_MS;
       if (visible && !document.hidden && (dirty || idle)) render(now);
       raf = requestAnimationFrame(loop);
     };
@@ -159,7 +180,7 @@ export function FabricHero() {
     return () => {
       disposed = true;
       cancelAnimationFrame(raf);
-      clearTimeout(buildTimer); clearTimeout(resizeTimer);
+      cancelIdle(buildTimer); clearTimeout(resizeTimer);
       ro.disconnect(); io.disconnect();
       wakeEvents.forEach((e) => window.removeEventListener(e, wake));
       tween?.scrollTrigger?.kill();
@@ -172,6 +193,11 @@ export function FabricHero() {
     <section ref={section} aria-labelledby="hero-title" className="relative" style={{ height: reduced ? "100svh" : `${N * 100 + 40}svh` }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <canvas ref={cvRef} role="img" aria-label="Light moving across embellished fabrics: sequins, beading, pearls and lace (illustration)" className="absolute inset-0 h-full w-full" />
+        <div
+          ref={pool} aria-hidden
+          className="pointer-events-none absolute left-0 top-0 h-[170vmax] w-[170vmax] rounded-full will-change-transform"
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--glint, #ffe0a3) 16%, transparent) 0%, color-mix(in srgb, var(--glint, #ffe0a3) 5%, transparent) 28%, transparent 55%)", transform: "translate3d(32vw, 30vh, 0) translate(-50%, -50%)" }}
+        />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0.6)_38%,rgba(11,10,9,0)_72%),linear-gradient(0deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0)_40%)]" />
 
         <h1 id="hero-title" className="sr-only">Peacotex: embellished fabrics for evening and bridal dresses</h1>

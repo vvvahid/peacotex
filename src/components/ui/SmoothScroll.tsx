@@ -17,7 +17,7 @@ export function SmoothScroll() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-    const lenis = new Lenis({ lerp: 0.1, smoothWheel: true });
+    const lenis = new Lenis({ lerp: 0.15, smoothWheel: true });
     window.__lenis = lenis;
     // The intro curtain may already hold the page still.
     if (document.documentElement.classList.contains("intro-lock")) lenis.stop();
