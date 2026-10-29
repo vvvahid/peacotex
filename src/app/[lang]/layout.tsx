@@ -10,6 +10,7 @@ import { DEFAULT_LOCALE, LOCALES } from "@/i18n/config";
 import { alternates, getDict, langOf } from "@/i18n/server";
 import { CatalogProvider } from "@/lib/catalog-client";
 import { getCatalog } from "@/server/catalog";
+import { getRates } from "@/server/rates";
 import "../globals.css";
 
 // latin-ext carries the letters of Polish, Czech, Romanian and Hungarian (ł, ř, ș, ő…).
@@ -44,7 +45,7 @@ const INTRO_SCRIPT = `try{if(new RegExp(${JSON.stringify(HOME)}).test(location.p
 export default async function RootLayout({ children, params }: { children: React.ReactNode; params: Promise<{ lang: string }> }) {
   const lang = await langOf(params);
   const t = getDict(lang);
-  const products = await getCatalog(lang);
+  const [products, rates] = await Promise.all([getCatalog(lang), getRates()]);
   // Fabric translations reach the browser through the catalogue, not the dictionary.
   const clientDict = { ...t, catalog: { ...t.catalog, products: {} } };
   return (
@@ -54,7 +55,7 @@ export default async function RootLayout({ children, params }: { children: React
       </head>
       <body>
         <a href="#main" className="sr-only z-[300] rounded-full bg-gold px-5 py-3 text-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-10">{t.skip}</a>
-        <I18nProvider lang={lang} dict={clientDict}>
+        <I18nProvider lang={lang} dict={clientDict} rates={rates}>
           <CatalogProvider products={products}>
             <CartProvider>
               <p className="fixed inset-x-0 top-0 z-[60] flex h-8 items-center justify-center gap-2 bg-gold px-3 text-center text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-ink">

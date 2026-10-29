@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
-import { alternates, getI18n, langOf } from "@/i18n/server";
+import { alternates, getI18n, getMoney, langOf } from "@/i18n/server";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const lang = await langOf(params);
@@ -11,7 +11,9 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 const ORDER = ["swatches", "shipping", "returns", "ateliers"] as const;
 
 export default async function ServicePage({ params }: { params: Promise<{ lang: string }> }) {
-  const { t, fill, href, price } = getI18n(await langOf(params));
+  const lang = await langOf(params);
+  const { t, fill, href } = getI18n(lang);
+  const { price } = await getMoney(lang);
   const sv = t.service;
   const vars = { size: SWATCH_SIZE, price: price(SWATCH_PRICE) };
   return (

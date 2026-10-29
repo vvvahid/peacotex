@@ -9,7 +9,7 @@ import { useI18n } from "@/i18n/client";
 
 export default function CartPage() {
   const i18n = useI18n();
-  const { t, fill, href, price, metres: m, lang } = i18n;
+  const { t, fill, href, price, metres: m, lang, money } = i18n;
   const c = t.cart;
   const { lines, total, setQty, remove, clear } = useCart();
   const { get: getProduct } = useCatalog();
@@ -29,7 +29,7 @@ export default function CartPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lang, lines: lines.map(({ kind, slug, qty }) => ({ kind, slug, qty })) }),
+        body: JSON.stringify({ lang, currency: money.cur, lines: lines.map(({ kind, slug, qty }) => ({ kind, slug, qty })) }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) { window.location.assign(data.url); return; }
@@ -92,7 +92,7 @@ export default function CartPage() {
                       </select>
                     </label>
                   )}
-                  <span className="w-24 text-right tabular-nums">{price(linePrice(l, getProduct))}</span>
+                  <span className="w-24 text-right tabular-nums">{money.format(linePrice(l, getProduct, money.unit))}</span>
                   <button type="button" onClick={() => remove(l.kind, l.slug)} className="text-sm text-mist underline underline-offset-4 hover:text-gold">
                     {c.remove}<span className="sr-only"> {name}</span>
                   </button>
@@ -104,11 +104,11 @@ export default function CartPage() {
           <aside aria-labelledby="summary" className="card h-fit p-8">
             <h2 id="summary" className="text-3xl">{c.summary}</h2>
             <dl className="mt-6 space-y-2 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-mist">{c.subtotal}</dt><dd className="tabular-nums">{price(total)}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-mist">{c.subtotal}</dt><dd className="tabular-nums">{money.format(total)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-mist">{c.shipping}</dt><dd className="text-right">{fabric.length ? c.shippingRolled : c.shippingSwatch}</dd></div>
             </dl>
-            <p className="mt-6 flex justify-between border-t border-line pt-4 font-serif text-2xl"><span>{c.total}</span><span className="tabular-nums">{price(total)}</span></p>
-            <p className="mt-1 text-xs text-gold/80">{c.sampleNote}</p>
+            <p className="mt-6 flex justify-between border-t border-line pt-4 font-serif text-2xl"><span>{c.total}</span><span className="tabular-nums">{money.format(total)}</span></p>
+            <p className="mt-1 text-xs text-gold/80">{t.product.vatIncluded} · {c.sampleNote}</p>
             {fabric.length > 0 && (
               <p className="mt-6 rounded-2xl border border-line p-4 text-xs text-ivory/75">
                 {c.cutNote}{" "}

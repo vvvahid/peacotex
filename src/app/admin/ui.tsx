@@ -1,7 +1,8 @@
 import type { OrderStatus } from "@/server/admin";
 
-export const euro = (cents: number) =>
-  new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR" }).format(cents / 100);
+/** Minor units (cents, grosze…) in a currency; euros when none is given. */
+export const euro = (cents: number, currency = "EUR") =>
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 
 export const when = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" }).format(new Date(iso)) : "—";

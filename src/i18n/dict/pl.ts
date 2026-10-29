@@ -23,6 +23,7 @@ const pl: Dict = {
     openMenu: "Otwórz menu",
     closeMenu: "Zamknij menu",
     language: "Język",
+    currency: "Waluta",
   },
   footer: {
     blurb: "Zdobione tkaniny na suknie wieczorowe i ślubne: koraliki, cekiny, perły, haft i koronka, sprzedawane na metry.",
@@ -156,6 +157,7 @@ const pl: Dict = {
     sampleListing: "Produkt przykładowy",
     perMetre: "za metr",
     samplePrice: "Cena przykładowa, do demonstracji",
+    vatIncluded: "Z VAT",
     length: "Długość",
     decrease: "Zmniejsz o 0,5 metra",
     increase: "Zwiększ o 0,5 metra",

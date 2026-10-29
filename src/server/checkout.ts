@@ -3,6 +3,9 @@ import { randomBytes } from "node:crypto";
 import { COMPLEMENTS, SWATCH_PRICE, SWATCH_SIZE, type Product } from "@/lib/catalog";
 import { DEFAULT_LOCALE, localePath, type Locale } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
+import { moneyOf, toMinor, type Currency, type Money } from "@/lib/money";
+import { getRates } from "./rates";
+import { SHIP_COUNTRIES, vatOf } from "./vat";
 import { loadRecords, toProduct } from "./catalog";
 import { getDb, type Queryable } from "./db";
 import { stockFor } from "./stock";
@@ -20,19 +23,20 @@ export class CheckoutError extends Error {
 const MAX_METRES = 40;
 const MAX_SWATCHES = 5;
 const MAX_LINES = 30;
-// Sample shipping, to be replaced by real rates (per country / tube length).
-const SHIP_ROLLED_CENTS = 1500;
-const COUNTRIES = ["NL", "BE", "LU", "DE", "FR", "AT", "IT", "ES", "PT", "IE", "DK", "SE", "FI"];
+// Sample shipping (euros), to be replaced by real rates (per country / tube length).
+const SHIP_ROLLED_EUR = 15;
 
 export interface PricedLine { kind: "fabric" | "swatch" | "complement"; slug: string; name: string; qty: number; unit: string; totalCents: number; description: string }
 
 const isHalfStep = (n: number) => Number.isFinite(n) && Math.abs(n * 2 - Math.round(n * 2)) < 1e-9;
 
 /**
- * Prices the bag against `fabrics` (the fabrics on sale, in the shopper's language). Names and
- * descriptions are in that language: they show on Stripe and in the order.
+ * Prices the bag against `fabrics` (the fabrics on sale, in the shopper's language), in the
+ * shopper's currency (`money`; amounts in its minor units). Names and descriptions are in that
+ * language: they show on Stripe and in the order.
  */
-export function priceCart(input: unknown, fabrics: Map<string, Product>, lang: Locale = DEFAULT_LOCALE): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
+export function priceCart(input: unknown, fabrics: Map<string, Product>, money: Money, lang: Locale = DEFAULT_LOCALE): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
+  const cents = (eurUnit: number, qty: number) => toMinor(money.unit(eurUnit) * qty);
   const { t, fill, complement, metres } = getI18n(lang);
   if (!Array.isArray(input) || input.length === 0) throw new CheckoutError("empty", "Your bag is empty.");
   if (input.length > MAX_LINES) throw new CheckoutError("too_many", "Too many items in one order.");
@@ -51,20 +55,20 @@ export function priceCart(input: unknown, fabrics: Map<string, Product>, lang: L
       const p = fabrics.get(slug);
       if (!p) throw new CheckoutError("unknown", "A fabric in your bag is no longer available.");
       if (!isHalfStep(qty) || qty < p.minMetres || qty > MAX_METRES) throw new CheckoutError("qty", `${p.name}: order from ${p.minMetres} m in 0.5 m steps.`);
-      lines.push({ kind, slug, name: `${p.name} — ${metres(qty)}`, qty, unit: "m", totalCents: Math.round(p.pricePerMetre * 100 * qty), description: fill(t.checkout.fabricDescription, { tagline: p.tagline }) });
+      lines.push({ kind, slug, name: `${p.name} — ${metres(qty)}`, qty, unit: "m", totalCents: cents(p.pricePerMetre, qty), description: fill(t.checkout.fabricDescription, { tagline: p.tagline }) });
     } else if (kind === "swatch") {
       const p = fabrics.get(slug);
       if (!p) throw new CheckoutError("unknown", "A swatch in your bag is no longer available.");
       if (qty !== 1) throw new CheckoutError("qty", "One swatch per fabric.");
       if (++swatches > MAX_SWATCHES) throw new CheckoutError("qty", `Up to ${MAX_SWATCHES} swatches per order.`);
-      lines.push({ kind, slug, name: `${p.name} — ${t.cart.swatch}`, qty: 1, unit: "piece", totalCents: SWATCH_PRICE * 100, description: fill(t.cart.swatchLine, { size: SWATCH_SIZE }) });
+      lines.push({ kind, slug, name: `${p.name} — ${t.cart.swatch}`, qty: 1, unit: "piece", totalCents: cents(SWATCH_PRICE, 1), description: fill(t.cart.swatchLine, { size: SWATCH_SIZE }) });
     } else if (kind === "complement") {
       const found = COMPLEMENTS.find((x) => x.slug === slug);
       if (!found) throw new CheckoutError("unknown", "An item in your bag is no longer available.");
       const c = complement(found);
       const ok = c.unit === "m" ? isHalfStep(qty) && qty >= 0.5 && qty <= MAX_METRES : Number.isInteger(qty) && qty >= 1 && qty <= 10;
       if (!ok) throw new CheckoutError("qty", `${c.name}: invalid quantity.`);
-      lines.push({ kind, slug, name: c.unit === "m" ? `${c.name} — ${metres(qty)}` : `${c.name} × ${qty}`, qty, unit: c.unit === "m" ? "m" : "piece", totalCents: Math.round(c.price * 100 * qty), description: c.note });
+      lines.push({ kind, slug, name: c.unit === "m" ? `${c.name} — ${metres(qty)}` : `${c.name} × ${qty}`, qty, unit: c.unit === "m" ? "m" : "piece", totalCents: cents(c.price, qty), description: c.note });
     } else {
       throw new CheckoutError("invalid", "Invalid item in bag.");
     }
@@ -79,12 +83,13 @@ export function priceCart(input: unknown, fabrics: Map<string, Product>, lang: L
 const newReference = () => `PTX-${randomBytes(4).toString("hex").toUpperCase()}`;
 
 /** Validates the bag, records a pending order and opens a Stripe Checkout session for it. */
-export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE): Promise<{ url: string; reference: string }> {
+export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE, currency: Currency = "EUR"): Promise<{ url: string; reference: string }> {
   const { t } = getI18n(lang);
   const db = await getDb();
+  const money = moneyOf(currency, await getRates(), lang);
   // Prices straight from the database (not the page cache), so an admin price change applies at once.
   const fabrics = new Map((await loadRecords(db)).filter((r) => r.active).map((r) => [r.slug, toProduct(r, lang)]));
-  const priced = priceCart(input, fabrics, lang);
+  const priced = priceCart(input, fabrics, money, lang);
 
   const fabric = priced.lines.filter((l) => l.kind === "fabric");
   const stock = await stockFor(db, fabric.map((l) => l.slug));
@@ -93,12 +98,12 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
     if (have < l.qty) throw new CheckoutError("stock", `Only ${have} m of ${fabrics.get(l.slug)!.name} left. Please reduce the length.`, 409);
   }
 
-  const shippingCents = priced.rolled ? SHIP_ROLLED_CENTS : 0;
+  const shippingCents = priced.rolled ? toMinor(money.unit(SHIP_ROLLED_EUR)) : 0;
   const reference = newReference();
   const orderId = await db.transaction(async (tx) => {
     const { rows } = await tx.query<{ id: string }>(
-      "INSERT INTO orders (reference, subtotal_cents, shipping_cents) VALUES ($1, $2, $3) RETURNING id",
-      [reference, priced.subtotalCents, shippingCents],
+      "INSERT INTO orders (reference, subtotal_cents, shipping_cents, currency, fx_rate) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      [reference, priced.subtotalCents, shippingCents, currency.toLowerCase(), money.rate],
     );
     const id = rows[0].id;
     for (const [i, l] of priced.lines.entries()) {
@@ -115,18 +120,18 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
     locale: lang, // Stripe's page speaks every language the site does
     line_items: priced.lines.map((l) => ({
       quantity: 1,
-      price_data: { currency: "eur", unit_amount: l.totalCents, product_data: { name: l.name, description: l.description } },
+      price_data: { currency: currency.toLowerCase(), unit_amount: l.totalCents, product_data: { name: l.name, description: l.description } },
     })),
     client_reference_id: orderId,
     metadata: { order_id: orderId, reference },
     payment_intent_data: { metadata: { order_id: orderId, reference }, description: `Peacotex order ${reference}` },
-    shipping_address_collection: { allowed_countries: COUNTRIES },
+    shipping_address_collection: { allowed_countries: SHIP_COUNTRIES },
     phone_number_collection: { enabled: true },
     shipping_options: [{
       shipping_rate_data: {
         type: "fixed_amount",
         display_name: priced.rolled ? t.checkout.shipRolled : t.checkout.shipSwatch,
-        fixed_amount: { amount: shippingCents, currency: "eur" },
+        fixed_amount: { amount: shippingCents, currency: currency.toLowerCase() },
       },
     }],
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
@@ -140,19 +145,19 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
 }
 
 export interface OrderView {
-  reference: string; status: string; totalCents: number | null; shippingCents: number; email: string | null;
+  reference: string; status: string; totalCents: number | null; shippingCents: number; email: string | null; currency: Currency;
   lines: { name: string; totalCents: number }[];
 }
 
 async function orderView(db: Queryable, sessionId: string): Promise<OrderView | null> {
-  const { rows } = await db.query<{ id: string; reference: string; status: string; total_cents: number | null; shipping_cents: number; email: string | null }>(
-    "SELECT id, reference, status, total_cents, shipping_cents, email FROM orders WHERE stripe_session_id = $1", [sessionId],
+  const { rows } = await db.query<{ id: string; reference: string; status: string; total_cents: number | null; shipping_cents: number; email: string | null; currency: string }>(
+    "SELECT id, reference, status, total_cents, shipping_cents, email, currency FROM orders WHERE stripe_session_id = $1", [sessionId],
   );
   const o = rows[0];
   if (!o) return null;
   const lines = await db.query<{ name: string; total_cents: number }>("SELECT name, total_cents FROM order_lines WHERE order_id = $1 ORDER BY line_no", [o.id]);
   return {
-    reference: o.reference, status: o.status, totalCents: o.total_cents, shippingCents: o.shipping_cents, email: o.email,
+    reference: o.reference, status: o.status, totalCents: o.total_cents, shippingCents: o.shipping_cents, email: o.email, currency: o.currency.toUpperCase() as Currency,
     lines: lines.rows.map((l) => ({ name: l.name, totalCents: l.total_cents })),
   };
 }
@@ -184,6 +189,11 @@ export async function fulfil(sessionId: string): Promise<OrderView | null> {
       );
       const order = rows[0];
       if (!order) return; // already fulfilled, or not ours
+      // VAT included in what was paid, for the destination country.
+      const shipping = session.collected_information?.shipping_details ?? session.shipping_details;
+      const country = (shipping as { address?: { country?: string } } | null)?.address?.country;
+      const vat = vatOf(session.amount_total ?? 0, country);
+      if (vat) await tx.query("UPDATE orders SET vat_country = $2, vat_rate = $3, vat_cents = $4 WHERE id = $1", [order.id, vat.country, vat.rate, vat.cents]);
       const problems: string[] = [];
       if (session.amount_total !== order.subtotal_cents + order.shipping_cents) problems.push(`Amount paid ${session.amount_total} differs from order total ${order.subtotal_cents + order.shipping_cents}.`);
       const fabric = await tx.query<{ slug: string; qty: string }>("SELECT slug, qty FROM order_lines WHERE order_id = $1 AND kind = 'fabric'", [order.id]);

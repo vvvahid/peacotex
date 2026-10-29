@@ -23,6 +23,7 @@ const hu: Dict = {
     openMenu: "Menü megnyitása",
     closeMenu: "Menü bezárása",
     language: "Nyelv",
+    currency: "Pénznem",
   },
   footer: {
     blurb: "Díszített anyagok estélyi és menyasszonyi ruhákhoz: gyöngy, flitter, hímzés és csipke, méterre.",
@@ -156,6 +157,7 @@ const hu: Dict = {
     sampleListing: "Mintatermék",
     perMetre: "méterenként",
     samplePrice: "Mintaár, bemutatáshoz",
+    vatIncluded: "ÁFA-val",
     length: "Hossz",
     decrease: "0,5 méterrel kevesebb",
     increase: "0,5 méterrel több",

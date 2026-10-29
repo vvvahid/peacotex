@@ -23,6 +23,7 @@ const nl: Dict = {
     openMenu: "Menu openen",
     closeMenu: "Menu sluiten",
     language: "Taal",
+    currency: "Valuta",
   },
   footer: {
     blurb: "Versierde stoffen voor avond- en bruidsmode: kralen, pailletten, parels, borduurwerk en kant, per meter verkocht.",
@@ -156,6 +157,7 @@ const nl: Dict = {
     sampleListing: "Voorbeeldproduct",
     perMetre: "per meter",
     samplePrice: "Voorbeeldprijs, ter demonstratie",
+    vatIncluded: "Incl. btw",
     length: "Lengte",
     decrease: "0,5 meter minder",
     increase: "0,5 meter meer",

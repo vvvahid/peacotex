@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useI18n } from "@/i18n/client";
 import { LanguageMenu } from "@/components/layout/LanguageMenu";
+import { CurrencyMenu } from "@/components/layout/CurrencyMenu";
 
 export function Header() {
   const { count } = useCart();
@@ -54,6 +55,7 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-1">
           <LanguageMenu />
+          <CurrencyMenu />
           <Link href={href("/cart")} className="flex h-11 items-center gap-2 rounded-full px-3 text-[0.8125rem] uppercase tracking-[0.2em] hover:text-gold">
             {t.nav.bag} <span className="grid h-6 min-w-6 place-items-center rounded-full bg-gold px-1.5 text-[0.75rem] tracking-normal text-ink" aria-label={plural(t.nav.bagItems, count)}>{count}</span>
           </Link>

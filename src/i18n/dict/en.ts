@@ -30,6 +30,7 @@ const en = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     language: "Language",
+    currency: "Currency",
   },
   footer: {
     blurb: "Embellished fabrics for evening and bridal wear: beading, sequins, pearls, embroidery and lace, sold by the metre.",
@@ -163,6 +164,7 @@ const en = {
     sampleListing: "Sample listing",
     perMetre: "per metre",
     samplePrice: "Sample price, for demonstration",
+    vatIncluded: "Incl. VAT",
     length: "Length",
     decrease: "Decrease by 0.5 metre",
     increase: "Increase by 0.5 metre",

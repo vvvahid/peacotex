@@ -38,7 +38,7 @@ export default async function AdminHome() {
                     <span className="font-medium">{o.reference}</span>
                     <StatusBadge status={o.status} />
                     <span className="text-sm text-mist">{o.name ?? o.email ?? ""}</span>
-                    <span className="ml-auto text-sm tabular-nums">{euro(o.totalCents)}</span>
+                    <span className="ml-auto text-sm tabular-nums">{euro(o.totalCents, o.currency)}</span>
                     <span className="w-28 text-right text-xs text-mist">{when(o.paidAt ?? o.createdAt)}</span>
                   </Link>
                 </li>

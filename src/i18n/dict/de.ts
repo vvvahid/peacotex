@@ -23,6 +23,7 @@ const de: Dict = {
     openMenu: "Menü öffnen",
     closeMenu: "Menü schließen",
     language: "Sprache",
+    currency: "Währung",
   },
   footer: {
     blurb: "Verzierte Stoffe für Abend- und Brautmode: Perlenstickerei, Pailletten, Perlen, Stickerei und Spitze, meterweise.",
@@ -156,6 +157,7 @@ const de: Dict = {
     sampleListing: "Beispielartikel",
     perMetre: "pro Meter",
     samplePrice: "Beispielpreis, zur Demonstration",
+    vatIncluded: "Inkl. MwSt.",
     length: "Länge",
     decrease: "0,5 Meter weniger",
     increase: "0,5 Meter mehr",

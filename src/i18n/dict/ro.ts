@@ -23,6 +23,7 @@ const ro: Dict = {
     openMenu: "Deschide meniul",
     closeMenu: "Închide meniul",
     language: "Limbă",
+    currency: "Monedă",
   },
   footer: {
     blurb: "Țesături ornamentate pentru rochii de seară și de mireasă: mărgele, paiete, perle, broderie și dantelă, vândute la metru.",
@@ -156,6 +157,7 @@ const ro: Dict = {
     sampleListing: "Produs exemplu",
     perMetre: "pe metru",
     samplePrice: "Preț exemplu, pentru demonstrație",
+    vatIncluded: "TVA inclus",
     length: "Lungime",
     decrease: "Scade cu 0,5 metri",
     increase: "Crește cu 0,5 metri",

@@ -23,6 +23,7 @@ const cs: Dict = {
     openMenu: "Otevřít menu",
     closeMenu: "Zavřít menu",
     language: "Jazyk",
+    currency: "Měna",
   },
   footer: {
     blurb: "Zdobené látky na večerní a svatební šaty: korálky, flitry, perly, výšivka a krajka, prodávané na metry.",
@@ -156,6 +157,7 @@ const cs: Dict = {
     sampleListing: "Ukázkový produkt",
     perMetre: "za metr",
     samplePrice: "Ukázková cena, pro demonstraci",
+    vatIncluded: "Vč. DPH",
     length: "Délka",
     decrease: "Ubrat 0,5 metru",
     increase: "Přidat 0,5 metru",

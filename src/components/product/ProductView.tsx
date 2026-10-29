@@ -73,7 +73,7 @@ export function ProductView({ p }: { p: Product }) {
           <p className="mt-8 text-3xl font-serif">
             {price(p.pricePerMetre)} <span className="text-base font-sans text-mist">{tp.perMetre}</span>
           </p>
-          <p className="text-xs uppercase tracking-[0.12em] text-gold/80">{tp.samplePrice}</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-gold/80">{tp.vatIncluded} · {tp.samplePrice}</p>
 
           <div className="mt-8 rounded-[1.75rem] border border-line p-6">
             <label htmlFor={qtyId} className="eyebrow">{tp.length}</label>
@@ -90,7 +90,7 @@ export function ProductView({ p }: { p: Product }) {
                 <button type="button" className="grid h-12 w-12 place-items-center text-xl hover:text-gold disabled:opacity-30" aria-label={tp.increase} disabled={metres >= MAX} onClick={() => setMetres((v) => clamp(v + STEP))}>+</button>
               </div>
               <span className="text-mist">{tp.metres}</span>
-              <span className="ml-auto font-serif text-2xl tabular-nums">{price(p.pricePerMetre * metres)}</span>
+              <span className="ml-auto font-serif text-2xl tabular-nums">{price(p.pricePerMetre, metres)}</span>
             </div>
             <p id={`${qtyId}-hint`} className="mt-2 text-xs text-mist">{fill(tp.lengthHint, { min: m(p.minMetres) })}</p>
 

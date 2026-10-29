@@ -55,6 +55,20 @@ Copy `.env.example` to `.env.local`, set `STRIPE_SECRET_KEY` (test key `sk_test_
 Production needs a managed PostgreSQL `DATABASE_URL` (PGlite does not persist on Vercel), the Stripe keys
 and webhook secret in the Vercel project settings, and `NEXT_PUBLIC_SITE_URL`.
 
+## Currencies, shipping and VAT
+
+- Prices are set in euros. Polish, Romanian, Czech and Hungarian pages show and charge złoty, lei,
+  koruna and forint (`src/lib/money.ts`); the currency menu in the header overrides the default.
+  Conversion uses the ECB daily rate (`src/server/rates.ts`, cached 6 h, built-in fallback) and rounds
+  the unit price up to a tidy amount (…9 zł / lei, 10 Kč, 100 Ft). Line = unit × quantity, identical on
+  the page, in the bag and on Stripe; orders keep their currency and the rate (`fx_rate`).
+- Stripe Checkout offers the payment methods switched on in the Stripe dashboard (Settings → Payment
+  methods): BLIK and Przelewy24 need PLN, iDEAL and Bancontact EUR.
+- Shipping: every EU country (`src/server/vat.ts`). The €15 rolled-shipping rate is a sample.
+- Prices include VAT. At payment the order records the VAT share for the destination country
+  (`vat_country`, `vat_rate`, `vat_cents`; EU OSS). Check the rates and whether you are over the
+  €10 000 OSS threshold with your accountant.
+
 ## Admin (`/admin`)
 
 Needs `DATABASE_URL` and `ADMIN_PASSWORD` (see `.env.example`); without them `/admin` explains what is missing.

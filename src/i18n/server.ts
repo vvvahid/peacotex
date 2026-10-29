@@ -12,11 +12,18 @@ import ro from "./dict/ro";
 import cs from "./dict/cs";
 import hu from "./dict/hu";
 import { makeI18n } from "./tools";
+import { LANG_CURRENCY, moneyOf } from "@/lib/money";
+import { getRates } from "@/server/rates";
 
 const DICTS: Record<Locale, Dict> = { en, nl, de, fr, pl, ro, cs, hu };
 
 export const getDict = (lang: Locale) => DICTS[lang];
 export const getI18n = (lang: Locale) => makeI18n(lang, DICTS[lang]);
+
+/** Prices on server-rendered pages, in the language's usual currency. */
+export async function getMoney(lang: Locale) {
+  return moneyOf(LANG_CURRENCY[lang], await getRates(), lang);
+}
 
 /** The [lang] route param as a Locale; anything else is a 404. */
 export async function langOf(params: Promise<{ lang: string }>): Promise<Locale> {

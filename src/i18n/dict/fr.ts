@@ -23,6 +23,7 @@ const fr: Dict = {
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
     language: "Langue",
+    currency: "Devise",
   },
   footer: {
     blurb: "Tissus ornés pour le soir et la mariée : perles, paillettes, broderie et dentelle, vendus au mètre.",
@@ -156,6 +157,7 @@ const fr: Dict = {
     sampleListing: "Fiche d'exemple",
     perMetre: "le mètre",
     samplePrice: "Prix d'exemple, pour la démonstration",
+    vatIncluded: "TTC",
     length: "Longueur",
     decrease: "0,5 mètre de moins",
     increase: "0,5 mètre de plus",

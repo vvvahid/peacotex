@@ -29,13 +29,15 @@ export interface Customer {
 
 export interface OrderRow {
   id: string; reference: string; status: OrderStatus; email: string | null; name: string | null;
-  totalCents: number; createdAt: string; paidAt: string | null; items: number;
+  /** In the order's currency (minor units). */
+  totalCents: number; currency: string; createdAt: string; paidAt: string | null; items: number;
 }
 
 export interface OrderDetail extends OrderRow {
   subtotalCents: number; shippingCents: number; paidCents: number | null; note: string | null;
   customer: Customer | null; trackingNumber: string | null; trackingUrl: string | null; shippedAt: string | null;
-  stripeUrl: string | null;
+  stripeUrl: string | null; fxRate: number;
+  vat: { country: string; rate: number; cents: number } | null;
   lines: { kind: string; slug: string; name: string; qty: number; unit: string; totalCents: number }[];
 }
 
@@ -44,14 +46,14 @@ const iso = (v: unknown) => (v == null ? null : new Date(v as string).toISOStrin
 
 type RawOrder = {
   id: string; reference: string; status: OrderStatus; email: string | null; customer: unknown; subtotal_cents: number;
-  shipping_cents: number; total_cents: number | null; created_at: string; paid_at: string | null; items: string;
+  shipping_cents: number; total_cents: number | null; created_at: string; paid_at: string | null; items: string; currency: string;
 };
 const toRow = (o: RawOrder): OrderRow => {
   const c = asJson<Customer>(o.customer);
   return {
     id: o.id, reference: o.reference, status: o.status, email: o.email,
     name: c?.shipping?.name ?? c?.details?.name ?? null,
-    totalCents: o.total_cents ?? o.subtotal_cents + o.shipping_cents,
+    totalCents: o.total_cents ?? o.subtotal_cents + o.shipping_cents, currency: o.currency.toUpperCase(),
     createdAt: iso(o.created_at)!, paidAt: iso(o.paid_at), items: Number(o.items),
   };
 };
@@ -76,7 +78,8 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
   const db = await getDb();
   const { rows } = await db.query<RawOrder & {
     note: string | null; tracking_number: string | null; tracking_url: string | null; shipped_at: string | null;
-    payment_intent: string | null; stripe_session_id: string | null;
+    payment_intent: string | null; stripe_session_id: string | null; fx_rate: string;
+    vat_country: string | null; vat_rate: string | null; vat_cents: number | null;
   }>(`SELECT o.*, (SELECT count(*) FROM order_lines l WHERE l.order_id = o.id) AS items FROM orders o WHERE o.id = $1`, [id]);
   const o = rows[0];
   if (!o) return null;
@@ -89,6 +92,8 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
     subtotalCents: o.subtotal_cents, shippingCents: o.shipping_cents, paidCents: o.total_cents, note: o.note,
     customer: asJson<Customer>(o.customer), trackingNumber: o.tracking_number, trackingUrl: o.tracking_url, shippedAt: iso(o.shipped_at),
     stripeUrl: o.payment_intent ? `https://dashboard.stripe.com/${test ? "test/" : ""}payments/${o.payment_intent}` : null,
+    fxRate: Number(o.fx_rate),
+    vat: o.vat_country && o.vat_cents != null ? { country: o.vat_country, rate: Number(o.vat_rate), cents: o.vat_cents } : null,
     lines: lines.rows.map((l) => ({ kind: l.kind, slug: l.slug, name: l.name, qty: Number(l.qty), unit: l.unit, totalCents: l.total_cents })),
   };
 }
@@ -150,8 +155,9 @@ export async function dashboard() {
   const db = await getDb();
   const counts = await db.query<{ status: OrderStatus; n: string }>("SELECT status, count(*) AS n FROM orders GROUP BY status");
   const by = Object.fromEntries(counts.rows.map((r) => [r.status, Number(r.n)])) as Partial<Record<OrderStatus, number>>;
+  // Orders in other currencies are counted in euros at the rate they were placed at.
   const revenue = await db.query<{ cents: string | null; n: string }>(
-    "SELECT sum(total_cents) AS cents, count(*) AS n FROM orders WHERE status IN ('paid','needs_attention','cut','shipped') AND paid_at > now() - interval '30 days'",
+    "SELECT round(sum(total_cents / fx_rate)) AS cents, count(*) AS n FROM orders WHERE status IN ('paid','needs_attention','cut','shipped') AND paid_at > now() - interval '30 days'",
   );
   const records = await loadRecords(db);
   const stock = await db.query<{ slug: string; metres: string }>("SELECT slug, metres FROM fabric_stock");

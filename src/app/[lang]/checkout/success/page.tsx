@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ClearCart } from "@/components/cart/ClearCart";
 import { fulfil, type OrderView } from "@/server/checkout";
 import { getI18n, langOf } from "@/i18n/server";
+import { formatMoney } from "@/lib/money";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   return { title: getI18n(await langOf(params)).t.success.metaTitle };
@@ -10,7 +11,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export const dynamic = "force-dynamic";
 
 export default async function SuccessPage({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ session_id?: string }> }) {
-  const { t, fill, href, price } = getI18n(await langOf(params));
+  const lang = await langOf(params);
+  const { t, fill, href } = getI18n(lang);
   const s = t.success;
   const { session_id } = await searchParams;
   let order: OrderView | null = null;
@@ -32,6 +34,7 @@ export default async function SuccessPage({ params, searchParams }: { params: Pr
   }
 
   const paid = order.status !== "pending" && order.status !== "expired";
+  const price = (amount: number) => formatMoney(amount, order!.currency, lang);
   return (
     <div className="mx-auto max-w-2xl px-4 pb-32 pt-44 sm:px-8">
       {paid && <ClearCart />}

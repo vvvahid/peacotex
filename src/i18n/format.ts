@@ -13,10 +13,6 @@ export function plural(lang: Locale, forms: Plural, n: number) {
   return fill(forms[form] ?? forms.other, { n });
 }
 
-export function formatPrice(n: number, lang: Locale = "en") {
-  return new Intl.NumberFormat(INTL_LOCALE[lang], { style: "currency", currency: "EUR", maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
-}
-
 /** A length in metres, with the language's decimal separator: "2.5 m", "2,5 m". */
 export function formatMetres(n: number, lang: Locale = "en") {
   return `${new Intl.NumberFormat(INTL_LOCALE[lang], { maximumFractionDigits: 2 }).format(n)} m`;

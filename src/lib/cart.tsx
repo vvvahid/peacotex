@@ -28,10 +28,11 @@ const Ctx = createContext<Cart | null>(null);
 
 type Lookup = (slug: string) => Product | undefined;
 
-export function linePrice(l: CartLine, getProduct: Lookup) {
-  if (l.kind === "swatch") return SWATCH_PRICE * l.qty;
-  if (l.kind === "fabric") return (getProduct(l.slug)?.pricePerMetre ?? 0) * l.qty;
-  return (COMPLEMENTS.find((c) => c.slug === l.slug)?.price ?? 0) * l.qty;
+/** A line's price in the shopper's currency: `unit` converts a euro unit price (see lib/money.ts). */
+export function linePrice(l: CartLine, getProduct: Lookup, unit: (eur: number) => number) {
+  if (l.kind === "swatch") return unit(SWATCH_PRICE) * l.qty;
+  if (l.kind === "fabric") return unit(getProduct(l.slug)?.pricePerMetre ?? 0) * l.qty;
+  return unit(COMPLEMENTS.find((c) => c.slug === l.slug)?.price ?? 0) * l.qty;
 }
 
 export function lineName(l: CartLine, getProduct: Lookup, { t, complement }: I18n) {
@@ -84,9 +85,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Cart>(() => ({
     lines,
     count: lines.length,
-    total: lines.reduce((a, l) => a + linePrice(l, get), 0),
+    total: lines.reduce((a, l) => a + linePrice(l, get, i18n.money.unit), 0),
     add, setQty, remove, clear, announcement, ready: loaded,
-  }), [lines, add, setQty, remove, clear, announcement, loaded, get]);
+  }), [lines, add, setQty, remove, clear, announcement, loaded, get, i18n.money]);
 
   return (
     <Ctx.Provider value={value}>

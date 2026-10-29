@@ -58,11 +58,13 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 {o.lines.map((l, i) => (
                   <tr key={i}>
                     <td className="py-2.5">{l.name}<span className="block text-xs text-mist">{l.kind === "fabric" ? `Cut ${l.qty} m · ${l.slug}` : l.kind === "swatch" ? "Swatch" : l.unit === "m" ? `${l.qty} m` : `× ${l.qty}`}</span></td>
-                    <td className="text-right tabular-nums">{euro(l.totalCents)}</td>
+                    <td className="text-right tabular-nums">{euro(l.totalCents, o.currency)}</td>
                   </tr>
                 ))}
-                <tr><td className="py-2.5 text-mist">Shipping</td><td className="text-right tabular-nums">{euro(o.shippingCents)}</td></tr>
-                <tr className="font-serif text-xl"><td className="pt-3">{o.paidCents != null ? "Paid" : "Total"}</td><td className="pt-3 text-right tabular-nums">{euro(o.paidCents ?? o.totalCents)}</td></tr>
+                <tr><td className="py-2.5 text-mist">Shipping</td><td className="text-right tabular-nums">{euro(o.shippingCents, o.currency)}</td></tr>
+                <tr className="font-serif text-xl"><td className="pt-3">{o.paidCents != null ? "Paid" : "Total"}</td><td className="pt-3 text-right tabular-nums">{euro(o.paidCents ?? o.totalCents, o.currency)}</td></tr>
+                {o.vat && <tr className="text-xs text-mist"><td className="pt-1">incl. VAT {o.vat.country} {Math.round(o.vat.rate * 1000) / 10}%</td><td className="pt-1 text-right tabular-nums">{euro(o.vat.cents, o.currency)}</td></tr>}
+                {o.currency !== "EUR" && <tr className="text-xs text-mist"><td className="pt-1">≈ in euros (rate {o.fxRate})</td><td className="pt-1 text-right tabular-nums">{euro(Math.round((o.paidCents ?? o.totalCents) / o.fxRate))}</td></tr>}
               </tbody>
             </table>
             {fabricMetres > 0 && <p className="mt-3 text-xs text-mist">{fabricMetres} m of fabric to cut, each length in one piece.</p>}

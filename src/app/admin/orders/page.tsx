@@ -47,7 +47,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   <td><StatusBadge status={o.status} /></td>
                   <td>{o.name ?? ""}<span className="block text-xs text-mist">{o.email ?? ""}</span></td>
                   <td>{o.items}</td>
-                  <td className="text-right tabular-nums">{euro(o.totalCents)}</td>
+                  <td className="text-right tabular-nums">{euro(o.totalCents, o.currency)}</td>
                   <td className="text-right text-mist">{when(o.paidAt ?? o.createdAt)}</td>
                 </tr>
               ))}
