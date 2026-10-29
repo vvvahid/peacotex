@@ -19,7 +19,19 @@ export interface Db extends Queryable {
   close(): Promise<void>;
 }
 
-export const isDbConfigured = () => !!process.env.DATABASE_URL;
+/**
+ * The database URL: DATABASE_URL, or the names hosting integrations use (Neon on Vercel may add
+ * POSTGRES_URL, or a prefix such as STORAGE_DATABASE_URL). The pooled URL is preferred.
+ */
+export function databaseUrl(): string | undefined {
+  const env = process.env;
+  if (env.DATABASE_URL) return env.DATABASE_URL;
+  if (env.POSTGRES_URL) return env.POSTGRES_URL;
+  const key = Object.keys(env).sort().find((k) => k.endsWith("_DATABASE_URL") && !k.includes("UNPOOLED"));
+  return key ? env[key] : undefined;
+}
+
+export const isDbConfigured = () => !!databaseUrl();
 
 async function createDb(url: string): Promise<Db> {
   if (url.startsWith("pglite://")) return createPglite(url.slice("pglite://".length));
@@ -81,7 +93,7 @@ async function createPglite(location: string): Promise<Db> {
 const g = globalThis as unknown as { __ptxDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   if (!url) throw new Error("DATABASE_URL is not set");
   g.__ptxDb ??= createDb(url).then(async (db) => {
     const { migrate } = await import("./migrate");

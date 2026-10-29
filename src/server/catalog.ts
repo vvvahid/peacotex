@@ -8,7 +8,7 @@ import type { FabricLook, Ground, Pattern } from "@/lib/fabric/render";
 import { PHOTOS, ownPhoto, type PhotoKey } from "@/lib/photos";
 import { LOCALES, type Locale } from "@/i18n/config";
 import { getDict } from "@/i18n/server";
-import { getDb, isDbConfigured, type Queryable } from "./db";
+import { databaseUrl, getDb, isDbConfigured, type Queryable } from "./db";
 
 /*
  * The catalogue. Each fabric is one row in `products` (a JSON record, validated by parseFabric);
@@ -103,7 +103,7 @@ export async function ensureCatalog(db: Queryable) {
 /** Whether pages may read the database now. PGlite is single-process, so the build (many workers) uses the seed. */
 function dbReadable() {
   if (!isDbConfigured()) return false;
-  const pglite = process.env.DATABASE_URL!.startsWith("pglite://");
+  const pglite = databaseUrl()!.startsWith("pglite://");
   return !(pglite && process.env.NEXT_PHASE === "phase-production-build");
 }
 

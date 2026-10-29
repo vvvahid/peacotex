@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Manrope } from "next/font/google";
 import { isAdmin, isAdminConfigured } from "@/server/admin-auth";
+import { isDbConfigured } from "@/server/db";
 import { logoutAction } from "./actions";
 import "../globals.css";
 
@@ -45,15 +46,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   );
 }
 
+/** Says which setting is missing (names only, never values), so the owner knows what to fix. */
 function NotConfigured() {
+  const db = isDbConfigured();
+  const pass = !!process.env.ADMIN_PASSWORD;
+  const row = (ok: boolean, name: string, what: string) => (
+    <li className="flex gap-3">
+      <span aria-hidden className={ok ? "text-emerald-300" : "text-red-300"}>{ok ? "✓" : "✗"}</span>
+      <span><code className="text-gold">{name}</code>: {what} <strong className="font-medium">{ok ? "Found." : "Missing."}</strong></span>
+    </li>
+  );
   return (
     <div className="mx-auto max-w-xl py-20">
       <h1 className="text-4xl font-light">The admin is not switched on</h1>
       <p className="mt-4 text-ivory/75">It needs two settings on the server (environment variables):</p>
-      <ul className="mt-4 list-disc space-y-2 pl-6 text-ivory/75">
-        <li><code className="text-gold">DATABASE_URL</code>: the database that holds orders and fabrics.</li>
-        <li><code className="text-gold">ADMIN_PASSWORD</code>: the password for signing in here.</li>
+      <ul className="mt-4 space-y-2 text-ivory/75">
+        {row(db, "DATABASE_URL", "the database that holds orders and fabrics.")}
+        {row(pass, "ADMIN_PASSWORD", "the password for signing in here.")}
       </ul>
+      <p className="mt-6 text-sm text-mist">
+        On Vercel, settings apply to deployments made after they are saved: redeploy after adding them.
+        {process.env.VERCEL_ENV && <> This is the <strong>{process.env.VERCEL_ENV}</strong> environment.</>}
+      </p>
     </div>
   );
 }
