@@ -8,16 +8,15 @@ import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator
 import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
 import { photoUrl } from "@/lib/photos";
-import { SWATCH_PRICE, SWATCH_SIZE, completeTheLook, getProduct } from "@/lib/catalog";
+import { SWATCH_PRICE, SWATCH_SIZE, completeTheLook, type Product } from "@/lib/catalog";
 import { useI18n } from "@/i18n/client";
 
 const STEP = 0.5;
 const MAX = 40;
 
-export function ProductView({ slug }: { slug: string }) {
-  const { t, fill, href, price, metres: m, product, complement } = useI18n();
+export function ProductView({ p }: { p: Product }) {
+  const { t, fill, href, price, metres: m, complement } = useI18n();
   const tp = t.product;
-  const p = product(getProduct(slug)!);
   const { add, lines } = useCart();
   const [metres, setMetres] = useState(Math.max(p.minMetres, 2));
   const [fit, setFit] = useState<Fit>(DEFAULT_FIT);
@@ -128,7 +127,7 @@ export function ProductView({ slug }: { slug: string }) {
             <>
               {/* Macro lens: the full-resolution photo at 3×, panned by the pointer. */}
               <div
-                role="img" aria-label={fill(tp.macroMagnified, { alt: p.photo.alt })}
+                role="img" aria-label={fill(p.photo.own ? tp.macroMagnifiedOwn : tp.macroMagnified, { alt: p.photo.alt })}
                 className="card relative mt-6 aspect-square touch-pan-y"
                 style={{ backgroundImage: `url("${photoUrl(p.photo, 2400)}")`, backgroundSize: "300%", backgroundPosition: `${lens.x}% ${lens.y}%` }}
                 onPointerMove={(e) => {
@@ -136,7 +135,7 @@ export function ProductView({ slug }: { slug: string }) {
                   setLens({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
                 }}
               >
-                <span className="chip absolute left-4 top-4">{tp.macroChipPhoto}</span>
+                <span className="chip absolute left-4 top-4">{p.photo.own ? tp.macroChipOwn : tp.macroChipPhoto}</span>
               </div>
               <p className="mt-3 text-xs text-mist">{tp.macroHintPhoto}</p>
             </>
@@ -176,7 +175,7 @@ export function ProductView({ slug }: { slug: string }) {
           />
         </div>
         <p className="mt-4 text-xs text-mist">
-          {tp.dressNote} {p.photo ? tp.dressNotePhoto : tp.dressNoteIllustration} <Link href={href(`/studio?fabric=${p.slug}`)} className="text-gold underline underline-offset-4">{tp.compare}</Link>
+          {tp.dressNote} {p.photo ? (p.photo.own ? "" : tp.dressNotePhoto) : tp.dressNoteIllustration} <Link href={href(`/studio?fabric=${p.slug}`)} className="text-gold underline underline-offset-4">{tp.compare}</Link>
         </p>
       </section>
 

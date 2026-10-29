@@ -6,6 +6,10 @@ const nextConfig = {
   serverExternalPackages: ["pg", "@electric-sql/pglite"],
   // Migrations are read from disk at runtime; ship them with every server function.
   outputFileTracingIncludes: { "/**/*": ["./db/migrations/**/*"] },
+  // Widths photoUrl() asks the image optimiser for (own photos uploaded in /admin).
+  images: { deviceSizes: [480, 600, 800, 900, 1200, 1800, 2400], imageSizes: [240] },
+  // Photo uploads from the admin (resized in the browser first; Vercel caps requests at 4.5 MB).
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
     return [
       {

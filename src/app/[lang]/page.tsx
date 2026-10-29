@@ -4,15 +4,17 @@ import { ProductCard } from "@/components/shop/ProductCard";
 import { IntroCurtain } from "@/components/ui/IntroCurtain";
 import { StockPhoto } from "@/components/ui/StockPhoto";
 import { PHOTOS, authorUrl } from "@/lib/photos";
-import { OCCASIONS, PRODUCTS, SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
+import { OCCASIONS, SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
 import { getI18n, langOf } from "@/i18n/server";
+import { getCatalog } from "@/server/catalog";
 
 const OCCASION_PHOTO = { bridal: PHOTOS.scallopLace, engagement: PHOTOS.blushLace, evening: PHOTOS.sequinDrape, gala: PHOTOS.goldGown } as const;
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
-  const { t, fill, href, price } = getI18n(await langOf(params));
+  const lang = await langOf(params);
+  const { t, fill, href, price } = getI18n(lang);
   const h = t.home;
-  const featured = PRODUCTS.filter((p) => p.featured);
+  const featured = (await getCatalog(lang)).filter((p) => p.featured).slice(0, 4);
   const steps = h.steps.map((s, i) => ({ ...s, n: `0${i + 1}`, text: fill(s.text, { size: SWATCH_SIZE, price: price(SWATCH_PRICE) }) }));
   return (
     <>

@@ -6,18 +6,20 @@ import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator";
 import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
-import { PRODUCTS, SWATCH_PRICE, getProduct } from "@/lib/catalog";
+import { SWATCH_PRICE } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
 import { photoUrl } from "@/lib/photos";
 
 export function DressStudio({ initialSlug }: { initialSlug?: string }) {
-  const [slug, setSlug] = useState(getProduct(initialSlug ?? "")?.slug ?? PRODUCTS[0].slug);
+  const { products: PRODUCTS, get } = useCatalog();
+  const [slug, setSlug] = useState(get(initialSlug ?? "")?.slug ?? PRODUCTS[0].slug);
   const [fit, setFit] = useState<Fit>(DEFAULT_FIT);
   const [notice, setNotice] = useState("");
   const { add, lines } = useCart();
-  const { t, fill, href, price, metres, product } = useI18n();
+  const { t, fill, href, price, metres } = useI18n();
   const ts = t.studio;
-  const p = product(getProduct(slug)!);
+  const p = get(slug) ?? PRODUCTS[0];
   const hasSwatch = lines.some((l) => l.kind === "swatch" && l.slug === slug);
   const swatches = lines.filter((l) => l.kind === "swatch").length;
 
@@ -28,7 +30,7 @@ export function DressStudio({ initialSlug }: { initialSlug?: string }) {
     <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)]">
       <div className="lg:sticky lg:top-32">
         <DressFigure p={p} sil={fit.sil} sleeves={fit.sleeves} />
-        <p className="mt-4 text-center text-xs text-mist">{p.photo ? ts.captionPhoto : ts.captionIllustration}</p>
+        <p className="mt-4 text-center text-xs text-mist">{p.photo ? (p.photo.own ? ts.captionOwn : ts.captionPhoto) : ts.captionIllustration}</p>
       </div>
 
       <div className="min-w-0 space-y-10">

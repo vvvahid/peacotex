@@ -34,8 +34,8 @@ first visit to the visitor's browser language, and the language menu remembers a
 
 - All texts: `src/i18n/dict/<lang>.ts`. `en.ts` is the source; every other file must have the
   same keys, so a missing translation fails the build.
-- Product texts in other languages sit under `catalog.products` by slug; English stays in
-  `src/lib/catalog.ts`.
+- Fabric texts are edited per language in the admin. The dictionaries' `catalog.products` only
+  seed the database on first run.
 - The translations were machine-made for the demo: have a native speaker review them before launch.
 
 ## Payments (Stripe Checkout)
@@ -54,5 +54,22 @@ Copy `.env.example` to `.env.local`, set `STRIPE_SECRET_KEY` (test key `sk_test_
 
 Production needs a managed PostgreSQL `DATABASE_URL` (PGlite does not persist on Vercel), the Stripe keys
 and webhook secret in the Vercel project settings, and `NEXT_PUBLIC_SITE_URL`.
+
+## Admin (`/admin`)
+
+Needs `DATABASE_URL` and `ADMIN_PASSWORD` (see `.env.example`); without them `/admin` explains what is missing.
+
+- **Orders:** to do / shipped / unpaid / cancelled, search by number or email. Order page: items,
+  address, mark as cut, mark as shipped with tracking, internal note, cancel (optionally putting the
+  metres back in stock), link to the payment in Stripe. Refunds are made in Stripe.
+- **Fabrics:** list with stock, show/hide and feature switches. Editor: price, minimum, stock,
+  specifications, texts in all 8 languages, photo upload (shrunk in the browser, stored in the
+  `media` table, served by `/api/media/<id>` through the image optimiser) or a labelled stock photo,
+  and the illustration colours with a live preview. New fabrics get their own page at once.
+- The catalogue lives in the `products` table (`src/server/catalog.ts`); the sample list in
+  `src/lib/catalog.ts` seeds it on first run. Saves clear the page cache (`revalidateTag("catalog")`).
+- Security: one password, compared in constant time; signed HttpOnly SameSite=Strict session cookie
+  (12 h); five wrong passwords lock that address for 15 minutes; every page and action checks the
+  session; changes are written to `admin_log`.
 
 Respects `prefers-reduced-motion` (no pinning, static light, no intro). The site sends `noindex`.

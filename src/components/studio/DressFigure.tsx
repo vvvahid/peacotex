@@ -62,7 +62,7 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
         }}
       >
         {p.photo ? (
-          <div role="img" aria-label={`${label} ${tf.stockPhoto}`} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${photoUrl(p.photo, 900)}")` }} />
+          <div role="img" aria-label={p.photo.own ? label : `${label} ${tf.stockPhoto}`} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${photoUrl(p.photo, 900)}")` }} />
         ) : (
           <FabricCanvas look={p.look} label={label} scale={0.42} followPointer rest={{ x: 0.7, y: 0.25 }} />
         )}
@@ -91,7 +91,7 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
         <path d={body} fill="none" stroke="rgba(255,240,215,.28)" strokeWidth=".9" />
         {arms.map((d) => <path key={d} d={d} fill="none" stroke="rgba(255,240,215,.18)" strokeWidth=".7" />)}
       </svg>
-      <figcaption className="chip absolute left-0 top-0">{p.photo ? tf.captionPhoto : tf.captionIllustration}</figcaption>
+      <figcaption className="chip absolute left-0 top-0">{p.photo ? (p.photo.own ? tf.captionOwn : tf.captionPhoto) : tf.captionIllustration}</figcaption>
     </figure>
   );
 }

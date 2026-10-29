@@ -3,7 +3,11 @@ import { PHOTOS, type Photo, type PhotoKey } from "@/lib/photos";
 
 /*
  * SAMPLE CONTENT. Every product, name, price and specification below is invented for the demo
- * and is shown on the site as sample content. Replace with the real catalogue before launch.
+ * and is shown on the site as sample content.
+ *
+ * PRODUCTS is the starting catalogue: on first run it is copied into the database, and from then
+ * on fabrics are edited in /admin (src/server/catalog.ts). The site falls back to this list only
+ * when no database is configured.
  */
 
 export type Technique = "beading" | "sequins" | "pearls" | "embroidery" | "lace";
@@ -13,6 +17,10 @@ export type Layout = "allover" | "border";
 export type Occasion = "bridal" | "engagement" | "evening" | "gala";
 
 export interface Colour { name: string; family: string; hex: string }
+
+/** Colour groups for the shop filter (labels in the dictionaries: terms.colours). */
+export const COLOUR_FAMILIES = ["Gold", "Ivory", "Black", "Blush", "Silver", "Bordeaux", "Navy", "Emerald"] as const;
+export type ColourFamily = (typeof COLOUR_FAMILIES)[number];
 
 export interface Product {
   slug: string;
@@ -208,7 +216,7 @@ export const PRODUCTS: Product[] = [
 ];
 
 // Fabrics without a fitting stock photo keep their procedural illustration.
-const PRODUCT_PHOTOS: Record<string, PhotoKey> = {
+export const PRODUCT_PHOTOS: Record<string, PhotoKey> = {
   aurelia: "sequinDrape", seraphine: "bridalBeading", perle: "bridalDetail", chantal: "scallopLace",
   opaline: "blushLace", noctis: "iridescent", celeste: "goldEmbroidery", ember: "copperPaillettes",
   sapphira: "midnight", rosalind: "emerald",

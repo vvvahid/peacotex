@@ -20,6 +20,8 @@ interface Props {
 /** A credited Unsplash stock photo that fills its (relatively positioned) parent. */
 export function StockPhoto({ photo, sizes, className, priority, label = "mood", credit = true, alt }: Props) {
   const { t } = useI18n();
+  // The shop's own photos are the real fabric: no stock label, no credit.
+  if (photo.own) { label = false; credit = false; }
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- Unsplash serves resized images itself */}

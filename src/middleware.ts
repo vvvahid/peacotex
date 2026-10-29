@@ -35,6 +35,6 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Pages only: not the API, Next's assets or files with an extension.
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  // Shop pages only: not the admin, the API, Next's assets or files with an extension.
+  matcher: ["/((?!admin|api|_next|.*\\..*).*)"],
 };

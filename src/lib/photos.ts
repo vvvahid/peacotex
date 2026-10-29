@@ -4,7 +4,11 @@
  * shop's own photography as it becomes available.
  */
 
-export interface Photo { id: string; src: string; alt: string; author: string; username: string }
+/** A product or mood photo: an Unsplash stock photo, or (own) one the shop uploaded in /admin. */
+export interface Photo { id: string; src: string; alt: string; author: string; username: string; own?: boolean }
+
+/** A photo uploaded in the admin (stored in the media table). Not a stock photo: no label or credit. */
+export const ownPhoto = (id: string, alt: string): Photo => ({ id, src: id, alt, author: "", username: "", own: true });
 
 const p = (id: string, src: string, alt: string, author: string, username: string): Photo => ({ id, src, alt, author, username });
 
@@ -27,7 +31,10 @@ export const PHOTOS = {
 export type PhotoKey = keyof typeof PHOTOS;
 
 /** Unsplash image CDN URL at a given width (Unsplash asks for hotlinked, resized images). */
-export const photoUrl = (ph: Photo, w: number) => `https://images.unsplash.com/${ph.src}?w=${w}&q=72&auto=format&fit=crop`;
+/** Own photos go through Next's image optimiser, which resizes them (allowed widths: next.config images). */
+export const photoUrl = (ph: Photo, w: number) => ph.own
+  ? `/_next/image?url=${encodeURIComponent(`/api/media/${ph.src}`)}&w=${w}&q=75`
+  : `https://images.unsplash.com/${ph.src}?w=${w}&q=72&auto=format&fit=crop`;
 export const photoSrcSet = (ph: Photo) => [480, 800, 1200, 1800, 2400].map((w) => `${photoUrl(ph, w)} ${w}w`).join(", ");
 
 const UTM = "utm_source=peacotex&utm_medium=referral";

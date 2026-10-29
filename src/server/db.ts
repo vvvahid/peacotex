@@ -86,6 +86,8 @@ export function getDb(): Promise<Db> {
   g.__ptxDb ??= createDb(url).then(async (db) => {
     const { migrate } = await import("./migrate");
     await migrate(db);
+    const { ensureCatalog } = await import("./catalog");
+    await ensureCatalog(db);
     const { ensureStock } = await import("./stock");
     await ensureStock(db);
     return db;

@@ -6,9 +6,8 @@ import { StockPhoto } from "@/components/ui/StockPhoto";
 import type { Product } from "@/lib/catalog";
 import { useI18n } from "@/i18n/client";
 
-export function ProductCard({ p: raw, headingLevel = 3 }: { p: Product; headingLevel?: 2 | 3 }) {
-  const { t, href, price, product } = useI18n();
-  const p = product(raw);
+export function ProductCard({ p, headingLevel = 3 }: { p: Product; headingLevel?: 2 | 3 }) {
+  const { t, href, price } = useI18n();
   const H = headingLevel === 2 ? "h2" : "h3";
   return (
     <article className="group relative">

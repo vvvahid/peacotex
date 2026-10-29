@@ -3,16 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/shop/ProductCard";
 import { EMPTY, type FilterKey, type Filters } from "@/lib/filters";
-import { BASES, EDGES, LAYOUTS, OCCASIONS, PRODUCTS, TECHNIQUES, type Product } from "@/lib/catalog";
+import { BASES, EDGES, LAYOUTS, OCCASIONS, TECHNIQUES, type Product } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
 import type { Dict } from "@/i18n/dict/en";
 
 type Sort = "featured" | "price-asc" | "price-desc";
 
-const COLOURS = Array.from(new Map(PRODUCTS.map((p) => [p.colour.family, p.colour.hex])).entries())
-  .map(([family, hex]) => ({ id: family, hex }));
-
-const groups = (t: Dict): { key: FilterKey; options: { id: string; label: string; hex?: string }[] }[] => {
+const groups = (t: Dict, products: Product[]): { key: FilterKey; options: { id: string; label: string; hex?: string }[] }[] => {
   const tr = t.terms;
   return [
     { key: "occasion", options: OCCASIONS.map((o) => ({ id: o.id, label: tr.occasions[o.id].label })) },
@@ -20,7 +18,7 @@ const groups = (t: Dict): { key: FilterKey; options: { id: string; label: string
     { key: "base", options: BASES.map((o) => ({ id: o.id, label: tr.bases[o.id] })) },
     { key: "edge", options: EDGES.map((o) => ({ id: o.id, label: tr.edges[o.id] })) },
     { key: "layout", options: LAYOUTS.map((o) => ({ id: o.id, label: tr.layouts[o.id] })) },
-    { key: "colour", options: COLOURS.map((o) => ({ ...o, label: tr.colours[o.id as keyof typeof tr.colours] ?? o.id })) },
+    { key: "colour", options: Array.from(new Map(products.map((p) => [p.colour.family, p.colour.hex])).entries()).map(([id, hex]) => ({ id, hex })).map((o) => ({ ...o, label: tr.colours[o.id as keyof typeof tr.colours] ?? o.id })) },
   ];
 };
 
@@ -38,6 +36,7 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
   const [sort, setSort] = useState<Sort>("featured");
   const [panel, setPanel] = useState(false);
   const { t, href, plural } = useI18n();
+  const { products } = useCatalog();
   const s = t.shop;
 
   // Keep the URL shareable without a navigation.
@@ -49,12 +48,12 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
   }, [filters, href]);
 
   const list = useMemo(() => {
-    const l = PRODUCTS.filter((p) => matches(p, filters));
+    const l = products.filter((p) => matches(p, filters));
     if (sort === "price-asc") l.sort((a, b) => a.pricePerMetre - b.pricePerMetre);
     if (sort === "price-desc") l.sort((a, b) => b.pricePerMetre - a.pricePerMetre);
     if (sort === "featured") l.sort((a, b) => Number(!!b.featured) - Number(!!a.featured));
     return l;
-  }, [filters, sort]);
+  }, [filters, sort, products]);
 
   const active = (Object.values(filters) as string[][]).reduce((a, v) => a + v.length, 0);
   const toggle = (k: FilterKey, id: string) =>
@@ -70,7 +69,7 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
           {panel ? s.hideFilters : s.filters}{active ? ` (${active})` : ""}
         </button>
         <form id="filters" aria-label={s.filterForm} onSubmit={(e) => e.preventDefault()} className={`${panel ? "block" : "hidden"} mt-6 space-y-8 lg:sticky lg:top-32 lg:mt-0 lg:block`}>
-          {groups(t).map((g) => (
+          {groups(t, products).map((g) => (
             <fieldset key={g.key}>
               <legend className="eyebrow mb-3">{s.groups[g.key]}</legend>
               <div className="flex flex-wrap gap-2">

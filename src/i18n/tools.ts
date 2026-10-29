@@ -1,4 +1,4 @@
-import type { Complement, Product } from "@/lib/catalog";
+import type { Complement } from "@/lib/catalog";
 import { localePath, type Locale } from "./config";
 import type { Dict } from "./dict/en";
 import { fill, formatMetres, formatPrice, plural, type Plural } from "./format";
@@ -14,17 +14,7 @@ export function makeI18n(lang: Locale, t: Dict) {
     price: (n: number) => formatPrice(n, lang),
     metres: (n: number) => formatMetres(n, lang),
     plural: (forms: Plural, n: number) => plural(lang, forms, n),
-    product: (p: Product): Product => {
-      const tx = t.catalog.products[p.slug];
-      return {
-        ...p,
-        tagline: tx?.tagline ?? p.tagline,
-        description: tx?.description ?? p.description,
-        colour: { ...p.colour, name: tx?.colour ?? p.colour.name },
-        stretch: p.stretch === "None" ? t.catalog.stretchNone : t.catalog.stretchSlight,
-        care: t.catalog.care,
-      };
-    },
+    // Fabrics arrive already translated (server/catalog.ts toProduct); linings and trims are translated here.
     complement: (c: Complement): Complement => {
       const tx = t.catalog.complements[c.slug];
       return tx ? { ...c, ...tx } : c;

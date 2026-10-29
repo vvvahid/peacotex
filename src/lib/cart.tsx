@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { COMPLEMENTS, getProduct, SWATCH_PRICE } from "@/lib/catalog";
+import { COMPLEMENTS, SWATCH_PRICE, type Product } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
 import type { I18n } from "@/i18n/tools";
 
@@ -25,13 +26,15 @@ interface Cart {
 const KEY = "ptx_cart_v1";
 const Ctx = createContext<Cart | null>(null);
 
-export function linePrice(l: CartLine) {
+type Lookup = (slug: string) => Product | undefined;
+
+export function linePrice(l: CartLine, getProduct: Lookup) {
   if (l.kind === "swatch") return SWATCH_PRICE * l.qty;
   if (l.kind === "fabric") return (getProduct(l.slug)?.pricePerMetre ?? 0) * l.qty;
   return (COMPLEMENTS.find((c) => c.slug === l.slug)?.price ?? 0) * l.qty;
 }
 
-export function lineName(l: CartLine, { t, complement }: I18n) {
+export function lineName(l: CartLine, getProduct: Lookup, { t, complement }: I18n) {
   if (l.kind === "complement") {
     const c = COMPLEMENTS.find((x) => x.slug === l.slug);
     return c ? complement(c).name : l.slug;
@@ -45,6 +48,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const i18n = useI18n();
+  const { get } = useCatalog();
 
   useEffect(() => {
     try {
@@ -66,8 +70,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       next[i] = { ...next[i], qty: line.kind === "fabric" ? line.qty : next[i].qty + line.qty };
       return next;
     });
-    setAnnouncement(i18n.fill(i18n.t.cart.added, { name: lineName(line, i18n) }));
-  }, [i18n]);
+    setAnnouncement(i18n.fill(i18n.t.cart.added, { name: lineName(line, get, i18n) }));
+  }, [i18n, get]);
   const setQty = useCallback((kind: LineKind, slug: string, qty: number) => {
     setLines((ls) => ls.map((l) => (l.kind === kind && l.slug === slug ? { ...l, qty } : l)));
   }, []);
@@ -80,9 +84,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Cart>(() => ({
     lines,
     count: lines.length,
-    total: lines.reduce((a, l) => a + linePrice(l), 0),
+    total: lines.reduce((a, l) => a + linePrice(l, get), 0),
     add, setQty, remove, clear, announcement, ready: loaded,
-  }), [lines, add, setQty, remove, clear, announcement, loaded]);
+  }), [lines, add, setQty, remove, clear, announcement, loaded, get]);
 
   return (
     <Ctx.Provider value={value}>

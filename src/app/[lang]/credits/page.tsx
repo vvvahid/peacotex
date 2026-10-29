@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PRODUCTS } from "@/lib/catalog";
+import { getCatalog } from "@/server/catalog";
 import { PHOTOS, UNSPLASH_URL, authorUrl, photoPage, photoUrl } from "@/lib/photos";
 import { alternates, getI18n, langOf } from "@/i18n/server";
 
@@ -9,9 +9,11 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 }
 
 export default async function CreditsPage({ params }: { params: Promise<{ lang: string }> }) {
-  const { t, fill } = getI18n(await langOf(params));
+  const lang = await langOf(params);
+  const { t, fill } = getI18n(lang);
   const c = t.credits;
-  const usedBy = (id: string) => PRODUCTS.filter((p) => p.photo?.id === id).map((p) => p.name);
+  const products = await getCatalog(lang);
+  const usedBy = (id: string) => products.filter((p) => !p.photo?.own && p.photo?.id === id).map((p) => p.name);
   return (
     <div className="mx-auto max-w-[1100px] px-4 pb-32 pt-40 sm:px-8">
       <p className="eyebrow">{c.eyebrow}</p>

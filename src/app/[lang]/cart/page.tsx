@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { linePrice, lineName, useCart } from "@/lib/cart";
-import { COMPLEMENTS, getProduct, SWATCH_SIZE } from "@/lib/catalog";
+import { COMPLEMENTS, SWATCH_SIZE } from "@/lib/catalog";
+import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
 
 export default function CartPage() {
@@ -11,6 +12,7 @@ export default function CartPage() {
   const { t, fill, href, price, metres: m, lang } = i18n;
   const c = t.cart;
   const { lines, total, setQty, remove, clear } = useCart();
+  const { get: getProduct } = useCatalog();
   const [placed, setPlaced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export default function CartPage() {
               const p = l.kind === "complement" ? undefined : getProduct(l.slug);
               const comp = l.kind === "complement" ? COMPLEMENTS.find((x) => x.slug === l.slug) : undefined;
               const byMetre = l.kind === "fabric" || (comp?.unit === "m");
-              const name = lineName(l, i18n);
+              const name = lineName(l, getProduct, i18n);
               return (
                 <li key={`${l.kind}-${l.slug}`} className="flex flex-wrap items-center gap-5 py-6">
                   <span aria-hidden className="h-20 w-16 shrink-0 rounded-xl border border-line" style={{ background: p ? `radial-gradient(circle at 30% 25%, ${p.look.glint}55, ${p.look.ink} 35%, ${p.look.base} 80%)` : "linear-gradient(135deg,#3a332b,#13110e)" }} />
@@ -90,7 +92,7 @@ export default function CartPage() {
                       </select>
                     </label>
                   )}
-                  <span className="w-24 text-right tabular-nums">{price(linePrice(l))}</span>
+                  <span className="w-24 text-right tabular-nums">{price(linePrice(l, getProduct))}</span>
                   <button type="button" onClick={() => remove(l.kind, l.slug)} className="text-sm text-mist underline underline-offset-4 hover:text-gold">
                     {c.remove}<span className="sr-only"> {name}</span>
                   </button>

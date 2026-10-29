@@ -1,8 +1,9 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
-import { COMPLEMENTS, getProduct, SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
+import { COMPLEMENTS, SWATCH_PRICE, SWATCH_SIZE, type Product } from "@/lib/catalog";
 import { DEFAULT_LOCALE, localePath, type Locale } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
+import { loadRecords, toProduct } from "./catalog";
 import { getDb, type Queryable } from "./db";
 import { stockFor } from "./stock";
 import { retrieveSession, stripeRequest, type CheckoutSession } from "./stripe";
@@ -27,9 +28,12 @@ export interface PricedLine { kind: "fabric" | "swatch" | "complement"; slug: st
 
 const isHalfStep = (n: number) => Number.isFinite(n) && Math.abs(n * 2 - Math.round(n * 2)) < 1e-9;
 
-/** Prices the bag; names and descriptions are in the shopper's language (they show on Stripe and in the order). */
-export function priceCart(input: unknown, lang: Locale = DEFAULT_LOCALE): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
-  const { t, fill, product, complement, metres } = getI18n(lang);
+/**
+ * Prices the bag against `fabrics` (the fabrics on sale, in the shopper's language). Names and
+ * descriptions are in that language: they show on Stripe and in the order.
+ */
+export function priceCart(input: unknown, fabrics: Map<string, Product>, lang: Locale = DEFAULT_LOCALE): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
+  const { t, fill, complement, metres } = getI18n(lang);
   if (!Array.isArray(input) || input.length === 0) throw new CheckoutError("empty", "Your bag is empty.");
   if (input.length > MAX_LINES) throw new CheckoutError("too_many", "Too many items in one order.");
   const seen = new Set<string>();
@@ -44,13 +48,12 @@ export function priceCart(input: unknown, lang: Locale = DEFAULT_LOCALE): { line
     seen.add(key);
 
     if (kind === "fabric") {
-      const raw = getProduct(slug);
-      if (!raw) throw new CheckoutError("unknown", "A fabric in your bag is no longer available.");
-      const p = product(raw);
+      const p = fabrics.get(slug);
+      if (!p) throw new CheckoutError("unknown", "A fabric in your bag is no longer available.");
       if (!isHalfStep(qty) || qty < p.minMetres || qty > MAX_METRES) throw new CheckoutError("qty", `${p.name}: order from ${p.minMetres} m in 0.5 m steps.`);
       lines.push({ kind, slug, name: `${p.name} — ${metres(qty)}`, qty, unit: "m", totalCents: Math.round(p.pricePerMetre * 100 * qty), description: fill(t.checkout.fabricDescription, { tagline: p.tagline }) });
     } else if (kind === "swatch") {
-      const p = getProduct(slug);
+      const p = fabrics.get(slug);
       if (!p) throw new CheckoutError("unknown", "A swatch in your bag is no longer available.");
       if (qty !== 1) throw new CheckoutError("qty", "One swatch per fabric.");
       if (++swatches > MAX_SWATCHES) throw new CheckoutError("qty", `Up to ${MAX_SWATCHES} swatches per order.`);
@@ -77,15 +80,17 @@ const newReference = () => `PTX-${randomBytes(4).toString("hex").toUpperCase()}`
 
 /** Validates the bag, records a pending order and opens a Stripe Checkout session for it. */
 export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE): Promise<{ url: string; reference: string }> {
-  const priced = priceCart(input, lang);
   const { t } = getI18n(lang);
   const db = await getDb();
+  // Prices straight from the database (not the page cache), so an admin price change applies at once.
+  const fabrics = new Map((await loadRecords(db)).filter((r) => r.active).map((r) => [r.slug, toProduct(r, lang)]));
+  const priced = priceCart(input, fabrics, lang);
 
   const fabric = priced.lines.filter((l) => l.kind === "fabric");
   const stock = await stockFor(db, fabric.map((l) => l.slug));
   for (const l of fabric) {
     const have = stock.get(l.slug) ?? 0;
-    if (have < l.qty) throw new CheckoutError("stock", `Only ${have} m of ${getProduct(l.slug)!.name} left. Please reduce the length.`, 409);
+    if (have < l.qty) throw new CheckoutError("stock", `Only ${have} m of ${fabrics.get(l.slug)!.name} left. Please reduce the length.`, 409);
   }
 
   const shippingCents = priced.rolled ? SHIP_ROLLED_CENTS : 0;
