@@ -4,13 +4,7 @@ export type Silhouette = "mini" | "midi" | "maxi" | "ballgown" | "train";
 export type Height = "petite" | "average" | "tall";
 export type Sleeves = "none" | "short" | "long";
 
-export const SILHOUETTES: { id: Silhouette; label: string; hint: string }[] = [
-  { id: "mini", label: "Mini", hint: "Above the knee" },
-  { id: "midi", label: "Midi", hint: "Mid-calf" },
-  { id: "maxi", label: "Maxi / column", hint: "Floor length, slim skirt" },
-  { id: "ballgown", label: "Ball gown", hint: "Full gathered skirt" },
-  { id: "train", label: "Gown with train", hint: "Floor length plus train" },
-];
+export const SILHOUETTES: Silhouette[] = ["mini", "midi", "maxi", "ballgown", "train"];
 
 // Body length for a ~140 cm wide fabric, average height (165–172 cm), no sleeves.
 const BASE: Record<Silhouette, number> = { mini: 1.5, midi: 2.4, maxi: 3.2, ballgown: 5.5, train: 7 };
@@ -21,38 +15,41 @@ const HEM: Record<Silhouette, number> = { mini: 1.3, midi: 1.7, maxi: 2.1, ballg
 const HEIGHT: Record<Height, number> = { petite: 0.92, average: 1, tall: 1.1 };
 const SLEEVES: Record<Sleeves, number> = { none: 0, short: 0.4, long: 0.8 };
 
-export interface Estimate { metres: number; lines: { label: string; metres: number }[]; notes: string[] }
+/** Lines and notes are keys into the dictionary's `estimator` texts, with the values to fill in. */
+export type LineKey = "body" | "bodyNarrow" | "sleevesShort" | "sleevesLong" | "matching" | "border" | "allowance";
+export type NoteKey = "noteRandom" | "noteBorder" | "noteScallop";
+export interface Estimate { metres: number; lines: { key: LineKey; vars?: Record<string, number>; metres: number }[]; notes: NoteKey[] }
 
 const roundUpHalf = (m: number) => Math.ceil(m * 2 - 1e-9) / 2;
 
 export function estimate(p: Product, s: Silhouette, h: Height, sl: Sleeves): Estimate {
   const lines: Estimate["lines"] = [];
-  const notes: string[] = [];
+  const notes: NoteKey[] = [];
   const widthFactor = p.widthCm < 135 ? 1.08 : 1;
   const body = BASE[s] * HEIGHT[h] * widthFactor;
-  lines.push({ label: `${SILHOUETTES.find((x) => x.id === s)!.label} body${widthFactor > 1 ? ` (narrower ${p.widthCm} cm width)` : ""}`, metres: body });
-  if (SLEEVES[sl]) lines.push({ label: `${sl === "long" ? "Long" : "Short"} sleeves`, metres: SLEEVES[sl] });
+  lines.push({ key: widthFactor > 1 ? "bodyNarrow" : "body", vars: { w: p.widthCm }, metres: body });
+  if (SLEEVES[sl]) lines.push({ key: sl === "long" ? "sleevesLong" : "sleevesShort", metres: SLEEVES[sl] });
 
   if (p.repeatCm > 0 && p.layout === "allover") {
     const extra = (p.repeatCm / 100) * MATCHED_PIECES[s];
-    lines.push({ label: `Pattern matching (${p.repeatCm} cm repeat × ${MATCHED_PIECES[s]} pieces)`, metres: extra });
+    lines.push({ key: "matching", vars: { cm: p.repeatCm, n: MATCHED_PIECES[s] }, metres: extra });
   } else if (p.repeatCm === 0) {
-    notes.push("Random all-over pattern: no extra needed for matching.");
+    notes.push("noteRandom");
   }
 
   let subtotal = lines.reduce((a, l) => a + l.metres, 0);
   if (p.layout === "border") {
     const hem = HEM[s] * HEIGHT[h];
     if (hem > subtotal) {
-      lines.push({ label: `Border must reach round the hem (≈ ${hem.toFixed(1)} m)`, metres: hem - subtotal });
+      lines.push({ key: "border", vars: { m: Math.round(hem * 10) / 10 }, metres: hem - subtotal });
       subtotal = hem;
     }
-    notes.push("Border fabric: the skirt is cut with the border along the hem, so the hem circumference sets the minimum.");
+    notes.push("noteBorder");
   }
-  if (p.edge === "scalloped") notes.push("Scalloped selvedge: place it at the hem, neckline or sleeve ends so the edge needs no finishing.");
+  if (p.edge === "scalloped") notes.push("noteScallop");
 
   const allowance = subtotal * 0.1;
-  lines.push({ label: "Cutting allowance (10%)", metres: allowance });
+  lines.push({ key: "allowance", metres: allowance });
   const metres = Math.max(p.minMetres, roundUpHalf(subtotal + allowance));
   return { metres, lines, notes };
 }

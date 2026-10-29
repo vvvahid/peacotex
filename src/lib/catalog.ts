@@ -238,7 +238,3 @@ export function completeTheLook(p: Product): Complement[] {
   return [...linings, ...trims].slice(0, 3);
 }
 
-export const formatPrice = (n: number) =>
-  new Intl.NumberFormat("en-GB", { style: "currency", currency: "EUR", maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
-
-export const label = <T extends string>(list: { id: T; label: string }[], id: T) => list.find((x) => x.id === id)?.label ?? id;

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { CheckoutError, startCheckout } from "@/server/checkout";
 import { isDbConfigured } from "@/server/db";
 import { isStripeConfigured, StripeError } from "@/server/stripe";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid", message: "Invalid request." }, { status: 400 });
   }
   try {
-    const { url, reference } = await startCheckout((body as { lines?: unknown })?.lines, origin);
+    const { lines, lang } = (body ?? {}) as { lines?: unknown; lang?: unknown };
+    const { url, reference } = await startCheckout(lines, origin, isLocale(lang) ? lang : DEFAULT_LOCALE);
     return NextResponse.json({ url, reference });
   } catch (err) {
     if (err instanceof CheckoutError) return NextResponse.json({ error: err.code, message: err.message }, { status: err.status });

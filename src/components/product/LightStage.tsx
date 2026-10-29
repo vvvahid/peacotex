@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { StockPhoto } from "@/components/ui/StockPhoto";
 import type { Product } from "@/lib/catalog";
+import { useI18n } from "@/i18n/client";
 
 /** Light height follows a gentle arc as it moves across, like a lamp swung over a cutting table. */
 const arcY = (x: number) => 0.42 - 0.3 * Math.sin(Math.PI * Math.min(1, Math.max(0, x)));
@@ -16,6 +17,7 @@ export function LightStage({ p }: { p: Product }) {
   const [light, setLight] = useState({ x: 0.22, y: arcY(0.22) });
   const dragging = useRef(false);
   const id = useId();
+  const { t, fill } = useI18n();
 
   const fromPointer = (e: React.PointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -45,7 +47,7 @@ export function LightStage({ p }: { p: Product }) {
         ) : (
           <>
             <FabricCanvas look={p.look} label={`${p.name}, ${p.tagline}`} light={light} showEdge />
-            <span className="chip absolute left-4 top-4">Illustration · not a product photo</span>
+            <span className="chip absolute left-4 top-4">{t.product.lightIllustration}</span>
           </>
         )}
         <span
@@ -54,15 +56,15 @@ export function LightStage({ p }: { p: Product }) {
         />
       </div>
       <div className="mt-4 flex items-center gap-4">
-        <label htmlFor={id} className="shrink-0 text-[0.75rem] uppercase tracking-[0.2em] text-mist">Move the light</label>
+        <label htmlFor={id} className="shrink-0 text-[0.75rem] uppercase tracking-[0.2em] text-mist">{t.product.moveLight}</label>
         <input
           id={id} type="range" min={0} max={100} step={1} className="rail"
           value={Math.round(Math.min(1, Math.max(0, light.x)) * 100)}
-          aria-valuetext={`Light at ${Math.round(light.x * 100)}% across the fabric`}
+          aria-valuetext={fill(t.product.lightValue, { n: Math.round(light.x * 100) })}
           onChange={(e) => { const x = Number(e.target.value) / 100; setLight({ x, y: arcY(x) }); }}
         />
       </div>
-      <p className="text-xs text-mist">Drag on the fabric or use the slider to see how it catches light.</p>
+      <p className="text-xs text-mist">{t.product.lightHint}</p>
     </div>
   );
 }

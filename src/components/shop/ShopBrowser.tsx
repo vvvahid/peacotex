@@ -4,20 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import { ProductCard } from "@/components/shop/ProductCard";
 import { EMPTY, type FilterKey, type Filters } from "@/lib/filters";
 import { BASES, EDGES, LAYOUTS, OCCASIONS, PRODUCTS, TECHNIQUES, type Product } from "@/lib/catalog";
+import { useI18n } from "@/i18n/client";
+import type { Dict } from "@/i18n/dict/en";
 
 type Sort = "featured" | "price-asc" | "price-desc";
 
 const COLOURS = Array.from(new Map(PRODUCTS.map((p) => [p.colour.family, p.colour.hex])).entries())
-  .map(([family, hex]) => ({ id: family, label: family, hex }));
+  .map(([family, hex]) => ({ id: family, hex }));
 
-const GROUPS: { key: FilterKey; title: string; options: { id: string; label: string; hex?: string }[] }[] = [
-  { key: "occasion", title: "Occasion", options: OCCASIONS },
-  { key: "technique", title: "Technique", options: TECHNIQUES },
-  { key: "base", title: "Base fabric", options: BASES },
-  { key: "edge", title: "Edge", options: EDGES },
-  { key: "layout", title: "Layout", options: LAYOUTS },
-  { key: "colour", title: "Colour", options: COLOURS },
-];
+const groups = (t: Dict): { key: FilterKey; options: { id: string; label: string; hex?: string }[] }[] => {
+  const tr = t.terms;
+  return [
+    { key: "occasion", options: OCCASIONS.map((o) => ({ id: o.id, label: tr.occasions[o.id].label })) },
+    { key: "technique", options: TECHNIQUES.map((o) => ({ id: o.id, label: tr.techniques[o.id] })) },
+    { key: "base", options: BASES.map((o) => ({ id: o.id, label: tr.bases[o.id] })) },
+    { key: "edge", options: EDGES.map((o) => ({ id: o.id, label: tr.edges[o.id] })) },
+    { key: "layout", options: LAYOUTS.map((o) => ({ id: o.id, label: tr.layouts[o.id] })) },
+    { key: "colour", options: COLOURS.map((o) => ({ ...o, label: tr.colours[o.id as keyof typeof tr.colours] ?? o.id })) },
+  ];
+};
 
 const matches = (p: Product, f: Filters) =>
   (!f.occasion.length || f.occasion.some((o) => p.occasions.includes(o as never))) &&
@@ -32,14 +37,16 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
   const [filters, setFilters] = useState<Filters>(initial);
   const [sort, setSort] = useState<Sort>("featured");
   const [panel, setPanel] = useState(false);
+  const { t, href, plural } = useI18n();
+  const s = t.shop;
 
   // Keep the URL shareable without a navigation.
   useEffect(() => {
     const q = new URLSearchParams();
     (Object.keys(filters) as FilterKey[]).forEach((k) => filters[k].length && q.set(k, filters[k].join(",")));
-    const s = q.toString();
-    window.history.replaceState(null, "", s ? `/shop?${s}` : "/shop");
-  }, [filters]);
+    const qs = q.toString();
+    window.history.replaceState(null, "", href(qs ? `/shop?${qs}` : "/shop"));
+  }, [filters, href]);
 
   const list = useMemo(() => {
     const l = PRODUCTS.filter((p) => matches(p, filters));
@@ -60,12 +67,12 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
           type="button" className="btn btn-line w-full lg:hidden" aria-expanded={panel} aria-controls="filters"
           onClick={() => setPanel((o) => !o)}
         >
-          {panel ? "Hide filters" : "Filters"}{active ? ` (${active})` : ""}
+          {panel ? s.hideFilters : s.filters}{active ? ` (${active})` : ""}
         </button>
-        <form id="filters" aria-label="Filter fabrics" onSubmit={(e) => e.preventDefault()} className={`${panel ? "block" : "hidden"} mt-6 space-y-8 lg:sticky lg:top-32 lg:mt-0 lg:block`}>
-          {GROUPS.map((g) => (
+        <form id="filters" aria-label={s.filterForm} onSubmit={(e) => e.preventDefault()} className={`${panel ? "block" : "hidden"} mt-6 space-y-8 lg:sticky lg:top-32 lg:mt-0 lg:block`}>
+          {groups(t).map((g) => (
             <fieldset key={g.key}>
-              <legend className="eyebrow mb-3">{g.title}</legend>
+              <legend className="eyebrow mb-3">{s.groups[g.key]}</legend>
               <div className="flex flex-wrap gap-2">
                 {g.options.map((o) => {
                   const on = filters[g.key].includes(o.id);
@@ -81,20 +88,20 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
             </fieldset>
           ))}
           {active > 0 && (
-            <button type="button" onClick={() => setFilters(EMPTY)} className="text-sm text-gold underline underline-offset-4">Clear all filters</button>
+            <button type="button" onClick={() => setFilters(EMPTY)} className="text-sm text-gold underline underline-offset-4">{s.clearAll}</button>
           )}
         </form>
       </div>
 
       <div>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-line pb-5">
-          <p aria-live="polite" className="text-sm text-mist">{list.length} {list.length === 1 ? "fabric" : "fabrics"}</p>
+          <p aria-live="polite" className="text-sm text-mist">{plural(s.count, list.length)}</p>
           <label className="flex items-center gap-3 text-sm text-mist">
-            Sort
+            {s.sort}
             <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-10 rounded-full border border-line bg-ink px-4 text-ivory">
-              <option value="featured">Featured</option>
-              <option value="price-asc">Price, low to high</option>
-              <option value="price-desc">Price, high to low</option>
+              <option value="featured">{s.sortFeatured}</option>
+              <option value="price-asc">{s.sortAsc}</option>
+              <option value="price-desc">{s.sortDesc}</option>
             </select>
           </label>
         </div>
@@ -104,9 +111,9 @@ export function ShopBrowser({ initial }: { initial: Filters }) {
           </div>
         ) : (
           <div className="card p-12 text-center">
-            <p className="font-serif text-3xl">No fabric matches all of these.</p>
-            <p className="mt-3 text-mist">Try removing a filter, or ask us: we often have rolls not yet online.</p>
-            <button type="button" onClick={() => setFilters(EMPTY)} className="btn btn-line mt-6">Clear filters</button>
+            <p className="font-serif text-3xl">{s.emptyTitle}</p>
+            <p className="mt-3 text-mist">{s.emptyText}</p>
+            <button type="button" onClick={() => setFilters(EMPTY)} className="btn btn-line mt-6">{s.clear}</button>
           </div>
         )}
       </div>

@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { COMPLEMENTS, getProduct, SWATCH_PRICE } from "@/lib/catalog";
+import { useI18n } from "@/i18n/client";
+import type { I18n } from "@/i18n/tools";
 
 /** Front-end demo cart: lives in this browser only, no payments. */
 export type LineKind = "fabric" | "swatch" | "complement";
@@ -29,16 +31,20 @@ export function linePrice(l: CartLine) {
   return (COMPLEMENTS.find((c) => c.slug === l.slug)?.price ?? 0) * l.qty;
 }
 
-export function lineName(l: CartLine) {
-  if (l.kind === "complement") return COMPLEMENTS.find((c) => c.slug === l.slug)?.name ?? l.slug;
+export function lineName(l: CartLine, { t, complement }: I18n) {
+  if (l.kind === "complement") {
+    const c = COMPLEMENTS.find((x) => x.slug === l.slug);
+    return c ? complement(c).name : l.slug;
+  }
   const p = getProduct(l.slug);
-  return l.kind === "swatch" ? `${p?.name ?? l.slug} — swatch` : p?.name ?? l.slug;
+  return l.kind === "swatch" ? `${p?.name ?? l.slug} — ${t.cart.swatch}` : p?.name ?? l.slug;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const i18n = useI18n();
 
   useEffect(() => {
     try {
@@ -60,15 +66,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       next[i] = { ...next[i], qty: line.kind === "fabric" ? line.qty : next[i].qty + line.qty };
       return next;
     });
-    setAnnouncement(`${lineName(line)} added to your bag.`);
-  }, []);
+    setAnnouncement(i18n.fill(i18n.t.cart.added, { name: lineName(line, i18n) }));
+  }, [i18n]);
   const setQty = useCallback((kind: LineKind, slug: string, qty: number) => {
     setLines((ls) => ls.map((l) => (l.kind === kind && l.slug === slug ? { ...l, qty } : l)));
   }, []);
   const remove = useCallback((kind: LineKind, slug: string) => {
     setLines((ls) => ls.filter((l) => !(l.kind === kind && l.slug === slug)));
-    setAnnouncement("Item removed from your bag.");
-  }, []);
+    setAnnouncement(i18n.t.cart.removed);
+  }, [i18n]);
   const clear = useCallback(() => setLines([]), []);
 
   const value = useMemo<Cart>(() => ({

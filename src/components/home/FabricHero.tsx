@@ -4,34 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { PHOTOS, authorUrl, photoSrcSet, photoUrl, type Photo } from "@/lib/photos";
+import { PHOTOS, authorUrl, photoSrcSet, photoUrl } from "@/lib/photos";
+import { useI18n } from "@/i18n/client";
 
-interface Scene { eyebrow: string; title: string; note: string; photo: Photo }
+// One photo per scene; the scene texts come from the dictionary (hero.scenes), in the same order.
+const PHOTO_SCENES = [PHOTOS.iridescent, PHOTOS.bridalBeading, PHOTOS.goldEmbroidery, PHOTOS.whiteLace];
 
-const SCENES: Scene[] = [
-  {
-    eyebrow: "01 · Sequins", title: "Fabric that\nholds the light.",
-    note: "Every sequin sits at its own angle, so the dress turns to liquid as it moves.",
-    photo: PHOTOS.iridescent,
-  },
-  {
-    eyebrow: "02 · Beading", title: "Beaded by hand,\nbead by bead.",
-    note: "Seed beads, bugles and pearl hearts traced into flowers you can feel.",
-    photo: PHOTOS.bridalBeading,
-  },
-  {
-    eyebrow: "03 · Embroidery", title: "Thread that\nturns to gold.",
-    note: "Metallic embroidery worked into leaves and flowers that glow by candlelight.",
-    photo: PHOTOS.goldEmbroidery,
-  },
-  {
-    eyebrow: "04 · Lace & edges", title: "Corded lace,\nfinished at the edge.",
-    note: "Lace and border fabrics finished at the selvedge, ready for hem and neckline.",
-    photo: PHOTOS.whiteLace,
-  },
-];
-
-const N = SCENES.length;
+const N = PHOTO_SCENES.length;
 const FADE = 0.2; // last part of each scene crossfades into the next
 
 /** Light path inside one scene: a diagonal sweep, alternating direction per scene. */
@@ -59,6 +38,8 @@ export function FabricHero() {
   const pool = useRef<HTMLDivElement>(null);
   const trigger = useRef<ScrollTrigger | null>(null);
   const [reduced, setReduced] = useState(false);
+  const { t, fill, href } = useI18n();
+  const SCENES = t.hero.scenes.map((s, i) => ({ ...s, photo: PHOTO_SCENES[i] }));
 
   const jump = (i: number) => {
     const t = trigger.current;
@@ -163,7 +144,7 @@ export function FabricHero() {
         />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0.6)_38%,rgba(11,10,9,0.1)_72%),linear-gradient(0deg,rgba(11,10,9,0.9)_0%,rgba(11,10,9,0)_40%),linear-gradient(180deg,rgba(11,10,9,0.55)_0%,rgba(11,10,9,0)_22%)]" />
 
-        <h1 id="hero-title" className="sr-only">Peacotex: embellished fabrics for evening and bridal dresses</h1>
+        <h1 id="hero-title" className="sr-only">{t.hero.title}</h1>
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-20">
           <div className="relative min-h-[15rem] sm:min-h-[17rem]">
             {SCENES.map((s, i) => (
@@ -175,13 +156,13 @@ export function FabricHero() {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/shop" className="btn btn-gold">Shop fabrics</Link>
-            <Link href="/service#swatches" className="btn btn-line">Order swatches</Link>
+            <Link href={href("/shop")} className="btn btn-gold">{t.hero.shop}</Link>
+            <Link href={href("/service#swatches")} className="btn btn-line">{t.hero.swatches}</Link>
           </div>
         </div>
 
         {!reduced && (
-          <nav aria-label="Hero scenes" className="absolute right-4 top-1/2 hidden -translate-y-1/2 md:block sm:right-8">
+          <nav aria-label={t.hero.scenesNav} className="absolute right-4 top-1/2 hidden -translate-y-1/2 md:block sm:right-8">
             <ol className="flex flex-col gap-4">
               {SCENES.map((s, i) => (
                 <li key={s.eyebrow}>
@@ -200,7 +181,7 @@ export function FabricHero() {
         )}
 
         <div className="absolute bottom-6 right-4 flex flex-col items-end gap-1.5 sm:right-8">
-          <span className="chip">Stock photo · not a Peacotex fabric</span>
+          <span className="chip">{t.hero.stock}</span>
           <div className="relative h-4 w-64">
             {SCENES.map((s, i) => (
               <a
@@ -209,14 +190,14 @@ export function FabricHero() {
                 className="absolute right-0 top-0 whitespace-nowrap text-[0.6875rem] text-ivory/70 hover:text-gold"
                 style={{ visibility: i === 0 ? "visible" : "hidden" }}
               >
-                Photo: {s.photo.author} / Unsplash
+                {fill(t.photo.credit, { author: s.photo.author })}
               </a>
             ))}
           </div>
         </div>
         {!reduced && (
           <div ref={cue} aria-hidden className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-[0.6875rem] uppercase tracking-[0.3em] text-ivory/60 lg:flex">
-            Scroll to move the light
+            {t.hero.scroll}
             <span className="h-8 w-px bg-gradient-to-b from-gold to-transparent" />
           </div>
         )}

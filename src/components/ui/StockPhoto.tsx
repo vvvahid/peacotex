@@ -1,3 +1,7 @@
+"use client";
+
+import { useI18n } from "@/i18n/client";
+import { fill } from "@/i18n/format";
 import { authorUrl, photoSrcSet, photoUrl, type Photo } from "@/lib/photos";
 
 interface Props {
@@ -15,6 +19,7 @@ interface Props {
 
 /** A credited Unsplash stock photo that fills its (relatively positioned) parent. */
 export function StockPhoto({ photo, sizes, className, priority, label = "mood", credit = true, alt }: Props) {
+  const { t } = useI18n();
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element -- Unsplash serves resized images itself */}
@@ -25,7 +30,7 @@ export function StockPhoto({ photo, sizes, className, priority, label = "mood", 
       />
       {label && (
         <span className="chip pointer-events-none absolute left-3 top-3 z-[1]">
-          {label === "product" ? "Stock photo · not this exact fabric" : "Stock photo"}
+          {label === "product" ? t.photo.product : t.photo.mood}
         </span>
       )}
       {credit && (
@@ -33,7 +38,7 @@ export function StockPhoto({ photo, sizes, className, priority, label = "mood", 
           href={authorUrl(photo)} target="_blank" rel="noopener noreferrer"
           className="absolute bottom-2 right-3 z-[2] text-[0.625rem] text-ivory/70 underline-offset-2 hover:text-gold hover:underline"
         >
-          Photo: {photo.author} / Unsplash
+          {fill(t.photo.credit, { author: photo.author })}
         </a>
       )}
     </>

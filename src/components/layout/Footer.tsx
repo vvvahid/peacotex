@@ -1,37 +1,42 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/i18n/client";
 
 export function Footer() {
+  const { t, href } = useI18n();
+  const f = t.footer;
   return (
     <footer className="border-t border-line bg-ink">
       <div className="mx-auto grid max-w-[1400px] gap-12 px-4 py-16 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <p className="font-serif text-3xl font-light tracking-[0.3em]">PEACOTEX</p>
-          <p className="mt-4 max-w-sm text-sm text-mist">Embellished fabrics for evening and bridal wear: beading, sequins, pearls, embroidery and lace, sold by the metre.</p>
+          <p className="mt-4 max-w-sm text-sm text-mist">{f.blurb}</p>
         </div>
         <div>
-          <h2 className="eyebrow mb-4 font-sans">Shop</h2>
+          <h2 className="eyebrow mb-4 font-sans">{f.shop}</h2>
           <ul className="space-y-2 text-sm text-ivory/80">
-            <li><Link href="/shop" className="hover:text-gold">All fabrics</Link></li>
-            <li><Link href="/shop?occasion=bridal" className="hover:text-gold">Bridal</Link></li>
-            <li><Link href="/shop?edge=scalloped" className="hover:text-gold">Scalloped edges</Link></li>
-            <li><Link href="/shop?layout=border" className="hover:text-gold">Border fabrics</Link></li>
+            <li><Link href={href("/shop")} className="hover:text-gold">{f.allFabrics}</Link></li>
+            <li><Link href={href("/shop?occasion=bridal")} className="hover:text-gold">{f.bridal}</Link></li>
+            <li><Link href={href("/shop?edge=scalloped")} className="hover:text-gold">{f.scalloped}</Link></li>
+            <li><Link href={href("/shop?layout=border")} className="hover:text-gold">{f.border}</Link></li>
           </ul>
         </div>
         <div>
-          <h2 className="eyebrow mb-4 font-sans">Service</h2>
+          <h2 className="eyebrow mb-4 font-sans">{f.service}</h2>
           <ul className="space-y-2 text-sm text-ivory/80">
-            <li><Link href="/service#swatches" className="hover:text-gold">Swatches</Link></li>
-            <li><Link href="/service#shipping" className="hover:text-gold">Rolled shipping</Link></li>
-            <li><Link href="/service#returns" className="hover:text-gold">Cut-fabric returns</Link></li>
-            <li><Link href="/service#ateliers" className="hover:text-gold">Ateliers &amp; trade</Link></li>
+            <li><Link href={href("/service#swatches")} className="hover:text-gold">{f.swatches}</Link></li>
+            <li><Link href={href("/service#shipping")} className="hover:text-gold">{f.shipping}</Link></li>
+            <li><Link href={href("/service#returns")} className="hover:text-gold">{f.returns}</Link></li>
+            <li><Link href={href("/service#ateliers")} className="hover:text-gold">{f.ateliers}</Link></li>
           </ul>
         </div>
         <div>
-          <h2 className="eyebrow mb-4 font-sans">About this demo</h2>
-          <p className="text-sm text-mist">Fabric images are stock photos from Unsplash or procedural illustrations, not Peacotex fabrics. Product names, prices and specifications are sample content. <Link href="/credits" className="underline underline-offset-2 hover:text-gold">Photo credits</Link></p>
+          <h2 className="eyebrow mb-4 font-sans">{f.aboutTitle}</h2>
+          <p className="text-sm text-mist">{f.about} <Link href={href("/credits")} className="underline underline-offset-2 hover:text-gold">{f.credits}</Link></p>
         </div>
       </div>
-      <p className="border-t border-line px-4 py-6 text-center text-xs text-mist">© {new Date().getFullYear()} Peacotex · Demo site</p>
+      <p className="border-t border-line px-4 py-6 text-center text-xs text-mist">© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
     </footer>
   );
 }

@@ -5,7 +5,8 @@ import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import type { Product } from "@/lib/catalog";
 import { photoUrl } from "@/lib/photos";
 import { DRESS_TOP, FIGURE, VIEW_H, VIEW_W, dressBottom, dressPath, sleevePaths } from "@/lib/dress";
-import { SILHOUETTES, type Silhouette, type Sleeves } from "@/lib/estimator";
+import type { Silhouette, Sleeves } from "@/lib/estimator";
+import { useI18n } from "@/i18n/client";
 
 const FOLDS: Record<Silhouette, number> = { mini: 5, midi: 6, maxi: 5, ballgown: 11, train: 7 };
 
@@ -15,6 +16,8 @@ const FOLDS: Record<Silhouette, number> = { mini: 5, midi: 6, maxi: 5, ballgown:
  */
 export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; sleeves: Sleeves }) {
   const uid = useId().replace(/:/g, "");
+  const { t, fill } = useI18n();
+  const tf = t.figure;
   const scalloped = p.edge === "scalloped";
   const body = dressPath(sil, scalloped);
   const arms = sleevePaths(sleeves);
@@ -28,11 +31,11 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   }, [arms, body, bottom]);
 
-  const label = `${p.name} as a ${SILHOUETTES.find((s) => s.id === sil)!.label.toLowerCase()} dress${sleeves !== "none" ? ` with ${sleeves} sleeves` : ""}`;
+  const label = fill(tf.label, { name: p.name, sil: t.terms.silhouettes[sil].label }) + (sleeves === "none" ? "" : tf[sleeves]);
   const folds = FOLDS[sil];
 
   return (
-    <figure className="relative mx-auto aspect-[300/640] w-full max-w-[15rem] sm:max-w-[22rem]" aria-label={`${label} (illustration)`}>
+    <figure className="relative mx-auto aspect-[300/640] w-full max-w-[15rem] sm:max-w-[22rem]" aria-label={`${label} ${tf.illustration}`}>
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="absolute inset-0 h-full w-full" aria-hidden>
         <defs>
           <linearGradient id={`skin-${uid}`} x1="0" y1="0" x2="1" y2="1">
@@ -59,7 +62,7 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
         }}
       >
         {p.photo ? (
-          <div role="img" aria-label={`${label} (stock photo)`} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${photoUrl(p.photo, 900)}")` }} />
+          <div role="img" aria-label={`${label} ${tf.stockPhoto}`} className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${photoUrl(p.photo, 900)}")` }} />
         ) : (
           <FabricCanvas look={p.look} label={label} scale={0.42} followPointer rest={{ x: 0.7, y: 0.25 }} />
         )}
@@ -88,7 +91,7 @@ export function DressFigure({ p, sil, sleeves }: { p: Product; sil: Silhouette; 
         <path d={body} fill="none" stroke="rgba(255,240,215,.28)" strokeWidth=".9" />
         {arms.map((d) => <path key={d} d={d} fill="none" stroke="rgba(255,240,215,.18)" strokeWidth=".7" />)}
       </svg>
-      <figcaption className="chip absolute left-0 top-0">{p.photo ? "Stock photo on a sketch · impression only" : "Illustration · impression only"}</figcaption>
+      <figcaption className="chip absolute left-0 top-0">{p.photo ? tf.captionPhoto : tf.captionIllustration}</figcaption>
     </figure>
   );
 }

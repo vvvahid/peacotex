@@ -6,7 +6,8 @@ import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { DEFAULT_FIT, Estimator, type Fit } from "@/components/product/Estimator";
 import { DressFigure } from "@/components/studio/DressFigure";
 import { useCart } from "@/lib/cart";
-import { PRODUCTS, SWATCH_PRICE, formatPrice, getProduct } from "@/lib/catalog";
+import { PRODUCTS, SWATCH_PRICE, getProduct } from "@/lib/catalog";
+import { useI18n } from "@/i18n/client";
 import { photoUrl } from "@/lib/photos";
 
 export function DressStudio({ initialSlug }: { initialSlug?: string }) {
@@ -14,23 +15,25 @@ export function DressStudio({ initialSlug }: { initialSlug?: string }) {
   const [fit, setFit] = useState<Fit>(DEFAULT_FIT);
   const [notice, setNotice] = useState("");
   const { add, lines } = useCart();
-  const p = getProduct(slug)!;
+  const { t, fill, href, price, metres, product } = useI18n();
+  const ts = t.studio;
+  const p = product(getProduct(slug)!);
   const hasSwatch = lines.some((l) => l.kind === "swatch" && l.slug === slug);
   const swatches = lines.filter((l) => l.kind === "swatch").length;
 
-  useEffect(() => { window.history.replaceState(null, "", `/studio?fabric=${slug}`); }, [slug]);
+  useEffect(() => { window.history.replaceState(null, "", href(`/studio?fabric=${slug}`)); }, [slug, href]);
   useEffect(() => setNotice(""), [slug]);
 
   return (
     <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)]">
       <div className="lg:sticky lg:top-32">
         <DressFigure p={p} sil={fit.sil} sleeves={fit.sleeves} />
-        <p className="mt-4 text-center text-xs text-mist">{p.photo ? "A stock photo on a sketch: an impression of the look, not this exact fabric." : "Move your pointer over the dress to move the light."}</p>
+        <p className="mt-4 text-center text-xs text-mist">{p.photo ? ts.captionPhoto : ts.captionIllustration}</p>
       </div>
 
       <div className="min-w-0 space-y-10">
         <fieldset className="min-w-0">
-          <legend className="eyebrow mb-4">Fabric</legend>
+          <legend className="eyebrow mb-4">{ts.fabric}</legend>
           <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 xl:grid-cols-6">
             {PRODUCTS.map((f) => {
               const on = f.slug === slug;
@@ -55,25 +58,25 @@ export function DressStudio({ initialSlug }: { initialSlug?: string }) {
         <div className="flex flex-wrap items-end justify-between gap-4 border-y border-line py-6">
           <div>
             <p className="font-serif text-3xl">{p.name}</p>
-            <p className="text-sm text-mist">{p.tagline} · {formatPrice(p.pricePerMetre)} / m <span className="sample-tag ml-1">Sample</span></p>
+            <p className="text-sm text-mist">{p.tagline} · {price(p.pricePerMetre)} / m <span className="sample-tag ml-1">{t.product.sample}</span></p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="button" className="btn btn-line" disabled={hasSwatch || swatches >= 5}
-              onClick={() => { add({ kind: "swatch", slug, qty: 1 }); setNotice(`Swatch of ${p.name} added.`); }}
+              onClick={() => { add({ kind: "swatch", slug, qty: 1 }); setNotice(fill(t.product.swatchAdded, { name: p.name })); }}
             >
-              {hasSwatch ? "Swatch in bag" : `Order a swatch · ${formatPrice(SWATCH_PRICE)}`}
+              {hasSwatch ? t.product.swatchInBag : fill(t.product.orderSwatch, { price: price(SWATCH_PRICE) })}
             </button>
-            <Link href={`/shop/${slug}`} className="btn btn-line">Fabric details</Link>
+            <Link href={href(`/shop/${slug}`)} className="btn btn-line">{ts.details}</Link>
           </div>
         </div>
 
         <Estimator
           p={p} fit={fit} onFit={setFit}
-          useLabel={(m) => `Add ${m} to bag`}
-          onUse={(m) => { add({ kind: "fabric", slug, qty: m }); setNotice(`${m} m of ${p.name} added to your bag.`); }}
+          useLabel={(m) => fill(t.product.addToBag, { m })}
+          onUse={(m) => { add({ kind: "fabric", slug, qty: m }); setNotice(fill(ts.added, { m: metres(m), name: p.name })); }}
         />
-        <p role="status" className="min-h-5 text-sm text-gold">{notice && <>{notice} <Link href="/cart" className="underline underline-offset-4">View bag</Link></>}</p>
+        <p role="status" className="min-h-5 text-sm text-gold">{notice && <>{notice} <Link href={href("/cart")} className="underline underline-offset-4">{t.product.viewBag}</Link></>}</p>
       </div>
     </div>
   );

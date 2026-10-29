@@ -1,6 +1,8 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { COMPLEMENTS, getProduct, SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
+import { DEFAULT_LOCALE, localePath, type Locale } from "@/i18n/config";
+import { getI18n } from "@/i18n/server";
 import { getDb, type Queryable } from "./db";
 import { stockFor } from "./stock";
 import { retrieveSession, stripeRequest, type CheckoutSession } from "./stripe";
@@ -25,7 +27,9 @@ export interface PricedLine { kind: "fabric" | "swatch" | "complement"; slug: st
 
 const isHalfStep = (n: number) => Number.isFinite(n) && Math.abs(n * 2 - Math.round(n * 2)) < 1e-9;
 
-export function priceCart(input: unknown): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
+/** Prices the bag; names and descriptions are in the shopper's language (they show on Stripe and in the order). */
+export function priceCart(input: unknown, lang: Locale = DEFAULT_LOCALE): { lines: PricedLine[]; subtotalCents: number; rolled: boolean } {
+  const { t, fill, product, complement, metres } = getI18n(lang);
   if (!Array.isArray(input) || input.length === 0) throw new CheckoutError("empty", "Your bag is empty.");
   if (input.length > MAX_LINES) throw new CheckoutError("too_many", "Too many items in one order.");
   const seen = new Set<string>();
@@ -40,22 +44,24 @@ export function priceCart(input: unknown): { lines: PricedLine[]; subtotalCents:
     seen.add(key);
 
     if (kind === "fabric") {
-      const p = getProduct(slug);
-      if (!p) throw new CheckoutError("unknown", "A fabric in your bag is no longer available.");
+      const raw = getProduct(slug);
+      if (!raw) throw new CheckoutError("unknown", "A fabric in your bag is no longer available.");
+      const p = product(raw);
       if (!isHalfStep(qty) || qty < p.minMetres || qty > MAX_METRES) throw new CheckoutError("qty", `${p.name}: order from ${p.minMetres} m in 0.5 m steps.`);
-      lines.push({ kind, slug, name: `${p.name} — ${qty} m`, qty, unit: "m", totalCents: Math.round(p.pricePerMetre * 100 * qty), description: `${p.tagline}. Cut as one length, shipped rolled.` });
+      lines.push({ kind, slug, name: `${p.name} — ${metres(qty)}`, qty, unit: "m", totalCents: Math.round(p.pricePerMetre * 100 * qty), description: fill(t.checkout.fabricDescription, { tagline: p.tagline }) });
     } else if (kind === "swatch") {
       const p = getProduct(slug);
       if (!p) throw new CheckoutError("unknown", "A swatch in your bag is no longer available.");
       if (qty !== 1) throw new CheckoutError("qty", "One swatch per fabric.");
       if (++swatches > MAX_SWATCHES) throw new CheckoutError("qty", `Up to ${MAX_SWATCHES} swatches per order.`);
-      lines.push({ kind, slug, name: `${p.name} — swatch`, qty: 1, unit: "piece", totalCents: SWATCH_PRICE * 100, description: `${SWATCH_SIZE} swatch` });
+      lines.push({ kind, slug, name: `${p.name} — ${t.cart.swatch}`, qty: 1, unit: "piece", totalCents: SWATCH_PRICE * 100, description: fill(t.cart.swatchLine, { size: SWATCH_SIZE }) });
     } else if (kind === "complement") {
-      const c = COMPLEMENTS.find((x) => x.slug === slug);
-      if (!c) throw new CheckoutError("unknown", "An item in your bag is no longer available.");
+      const found = COMPLEMENTS.find((x) => x.slug === slug);
+      if (!found) throw new CheckoutError("unknown", "An item in your bag is no longer available.");
+      const c = complement(found);
       const ok = c.unit === "m" ? isHalfStep(qty) && qty >= 0.5 && qty <= MAX_METRES : Number.isInteger(qty) && qty >= 1 && qty <= 10;
       if (!ok) throw new CheckoutError("qty", `${c.name}: invalid quantity.`);
-      lines.push({ kind, slug, name: c.unit === "m" ? `${c.name} — ${qty} m` : `${c.name} × ${qty}`, qty, unit: c.unit === "m" ? "m" : "piece", totalCents: Math.round(c.price * 100 * qty), description: c.note });
+      lines.push({ kind, slug, name: c.unit === "m" ? `${c.name} — ${metres(qty)}` : `${c.name} × ${qty}`, qty, unit: c.unit === "m" ? "m" : "piece", totalCents: Math.round(c.price * 100 * qty), description: c.note });
     } else {
       throw new CheckoutError("invalid", "Invalid item in bag.");
     }
@@ -70,8 +76,9 @@ export function priceCart(input: unknown): { lines: PricedLine[]; subtotalCents:
 const newReference = () => `PTX-${randomBytes(4).toString("hex").toUpperCase()}`;
 
 /** Validates the bag, records a pending order and opens a Stripe Checkout session for it. */
-export async function startCheckout(input: unknown, origin: string): Promise<{ url: string; reference: string }> {
-  const priced = priceCart(input);
+export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE): Promise<{ url: string; reference: string }> {
+  const priced = priceCart(input, lang);
+  const { t } = getI18n(lang);
   const db = await getDb();
 
   const fabric = priced.lines.filter((l) => l.kind === "fabric");
@@ -100,7 +107,7 @@ export async function startCheckout(input: unknown, origin: string): Promise<{ u
 
   const session = await stripeRequest<CheckoutSession>("POST", "/checkout/sessions", {
     mode: "payment",
-    locale: "en",
+    locale: lang, // Stripe's page speaks every language the site does
     line_items: priced.lines.map((l) => ({
       quantity: 1,
       price_data: { currency: "eur", unit_amount: l.totalCents, product_data: { name: l.name, description: l.description } },
@@ -113,13 +120,13 @@ export async function startCheckout(input: unknown, origin: string): Promise<{ u
     shipping_options: [{
       shipping_rate_data: {
         type: "fixed_amount",
-        display_name: priced.rolled ? "Rolled on a tube · tracked & insured" : "Swatch folio by post",
+        display_name: priced.rolled ? t.checkout.shipRolled : t.checkout.shipSwatch,
         fixed_amount: { amount: shippingCents, currency: "eur" },
       },
     }],
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
-    success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/cart?cancelled=1`,
+    success_url: `${origin}${localePath(lang, "/checkout/success")}?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}${localePath(lang, "/cart")}?cancelled=1`,
   }, `checkout-${orderId}`);
 
   await db.query("UPDATE orders SET stripe_session_id = $1 WHERE id = $2", [session.id, orderId]);

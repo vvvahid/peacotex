@@ -25,6 +25,19 @@ npm run dev        # http://localhost:3000
   metreage estimator by silhouette (repeat + border aware), complete the look
 - `/cart`, `/service`
 
+## Languages
+
+English, Dutch, German, French, Polish, Romanian, Czech and Hungarian. English lives at the
+plain URLs (`/shop`); the others have a prefix (`/nl/shop`, `/de/shop`…). The middleware sends a
+first visit to the visitor's browser language, and the language menu remembers a choice in the
+`ptx_lang` cookie. Stripe Checkout opens in the same language.
+
+- All texts: `src/i18n/dict/<lang>.ts`. `en.ts` is the source; every other file must have the
+  same keys, so a missing translation fails the build.
+- Product texts in other languages sit under `catalog.products` by slug; English stays in
+  `src/lib/catalog.ts`.
+- The translations were machine-made for the demo: have a native speaker review them before launch.
+
 ## Payments (Stripe Checkout)
 
 Copy `.env.example` to `.env.local`, set `STRIPE_SECRET_KEY` (test key `sk_test_…`) and keep
