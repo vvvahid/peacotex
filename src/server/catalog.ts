@@ -89,12 +89,28 @@ function seedRecords(): FabricRecord[] {
   }));
 }
 
-/** Copies the sample catalogue into an empty products table (first run only). */
+/**
+ * Copies the sample catalogue into an empty products table (first run). On later runs, adds the
+ * sample translations for languages a sample fabric does not have yet (a newly added site
+ * language), never touching texts edited in the admin.
+ */
 export async function ensureCatalog(db: Queryable) {
-  const { rows } = await db.query<{ n: string }>("SELECT count(*) AS n FROM products");
-  if (Number(rows[0].n) > 0) return;
-  for (const r of seedRecords()) {
-    await db.query("INSERT INTO products (slug, data) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING", [r.slug, JSON.stringify(r)]);
+  const { rows } = await db.query<{ slug: string; data: FabricRecord | string }>("SELECT slug, data FROM products");
+  if (!rows.length) {
+    for (const r of seedRecords()) {
+      await db.query("INSERT INTO products (slug, data) VALUES ($1, $2) ON CONFLICT (slug) DO NOTHING", [r.slug, JSON.stringify(r)]);
+    }
+    return;
+  }
+  const seeds = new Map(seedRecords().map((r) => [r.slug, r]));
+  for (const row of rows) {
+    const seed = seeds.get(row.slug);
+    if (!seed) continue;
+    const rec = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as FabricRecord;
+    const missing = LOCALES.filter((l) => !rec.text[l] && seed.text[l]);
+    if (!missing.length) continue;
+    for (const l of missing) rec.text[l] = seed.text[l]!;
+    await db.query("UPDATE products SET data = $2 WHERE slug = $1", [row.slug, JSON.stringify(rec)]);
   }
 }
 

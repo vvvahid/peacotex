@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { CURRENCIES, type Currency } from "@/lib/money";
 
-const SYMBOL: Record<Currency, string> = { EUR: "€", PLN: "zł", RON: "lei", CZK: "Kč", HUF: "Ft" };
+const SYMBOL: Record<Currency, string> = { EUR: "€", PLN: "zł", RON: "lei", CZK: "Kč", HUF: "Ft", SEK: "kr", DKK: "kr", NOK: "kr" };
 
 /** Currency picker: switches prices at once (no reload) and remembers the choice in a cookie. */
 export function CurrencyMenu() {

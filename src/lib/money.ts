@@ -1,33 +1,35 @@
 import { INTL_LOCALE, type Locale } from "@/i18n/config";
 
 /*
- * Prices are set in euros (admin). Shoppers in Poland, Romania, Czechia and Hungary see and pay in
- * their own currency: the euro price is converted at the ECB rate and rounded up to a tidy amount.
- * A line costs (rounded unit price) × quantity, the same on the page, in the bag and on Stripe.
+ * Prices are set in euros (admin). Shoppers in Poland, Romania, Czechia, Hungary, Sweden, Denmark
+ * and Norway see and pay in their own currency: the euro price is converted at the ECB rate and
+ * rounded up to a tidy amount. A line costs (rounded unit price) × quantity, the same on the page, in the bag and on Stripe.
  */
 
-export const CURRENCIES = ["EUR", "PLN", "RON", "CZK", "HUF"] as const;
+export const CURRENCIES = ["EUR", "PLN", "RON", "CZK", "HUF", "SEK", "DKK", "NOK"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCY_COOKIE = "ptx_cur";
 
 /** Units of each currency per euro. */
 export type Rates = Record<Currency, number>;
 
-/** Used when the ECB feed cannot be reached (rates of 28 Oct 2026). */
-export const FALLBACK_RATES: Rates = { EUR: 1, PLN: 4.4045, RON: 5.3508, CZK: 24.367, HUF: 366.88 };
+/** Used when the ECB feed cannot be reached (rates of 28–29 Oct 2026). */
+export const FALLBACK_RATES: Rates = { EUR: 1, PLN: 4.4045, RON: 5.3508, CZK: 24.367, HUF: 366.88, SEK: 10.9995, DKK: 7.4736, NOK: 10.3315 };
 
 export const isCurrency = (s: unknown): s is Currency => typeof s === "string" && (CURRENCIES as readonly string[]).includes(s);
 
 /** The currency a language starts with; the currency menu can change it. */
-export const LANG_CURRENCY: Record<Locale, Currency> = { en: "EUR", nl: "EUR", de: "EUR", fr: "EUR", pl: "PLN", ro: "RON", cs: "CZK", hu: "HUF" };
+export const LANG_CURRENCY: Record<Locale, Currency> = {
+  en: "EUR", nl: "EUR", de: "EUR", fr: "EUR", pl: "PLN", ro: "RON", cs: "CZK", hu: "HUF", sv: "SEK", da: "DKK", fi: "EUR", nb: "NOK",
+};
 
-/** Euro price → price in `cur`, rounded up: 787.43 zł → 789 zł, 4 625 Kč → 4 630 Kč, 67 873 Ft → 67 900 Ft. */
+/** Euro price → price in `cur`, rounded up: 787.43 zł → 789 zł, 2 034.9 kr → 2 039 kr, 4 625 Kč → 4 630 Kč, 67 873 Ft → 67 900 Ft. */
 export function localUnit(eur: number, cur: Currency, rates: Rates): number {
   if (cur === "EUR") return eur;
   const x = eur * rates[cur];
   if (cur === "CZK") return Math.ceil(x / 10) * 10;
   if (cur === "HUF") return Math.ceil(x / 100) * 100;
-  // PLN, RON: whole units ending in 9 from 10 up.
+  // PLN, RON, SEK, DKK, NOK: whole units ending in 9 from 10 up.
   return x < 10 ? Math.ceil(x) : Math.ceil((x + 1) / 10) * 10 - 1;
 }
 

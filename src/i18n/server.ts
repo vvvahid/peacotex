@@ -11,11 +11,15 @@ import pl from "./dict/pl";
 import ro from "./dict/ro";
 import cs from "./dict/cs";
 import hu from "./dict/hu";
+import sv from "./dict/sv";
+import da from "./dict/da";
+import fi from "./dict/fi";
+import nb from "./dict/nb";
 import { makeI18n } from "./tools";
 import { LANG_CURRENCY, moneyOf } from "@/lib/money";
 import { getRates } from "@/server/rates";
 
-const DICTS: Record<Locale, Dict> = { en, nl, de, fr, pl, ro, cs, hu };
+const DICTS: Record<Locale, Dict> = { en, nl, de, fr, pl, ro, cs, hu, sv, da, fi, nb };
 
 export const getDict = (lang: Locale) => DICTS[lang];
 export const getI18n = (lang: Locale) => makeI18n(lang, DICTS[lang]);
