@@ -11,6 +11,7 @@ import { photoUrl } from "@/lib/photos";
 import { SWATCH_PRICE, SWATCH_SIZE, completeTheLook, type Product } from "@/lib/catalog";
 import { useI18n } from "@/i18n/client";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
+import { SITE_LIVE } from "@/lib/site";
 
 const STEP = 0.5;
 const MAX = 40;
@@ -74,7 +75,7 @@ export function ProductView({ p }: { p: Product }) {
           <p className="mt-8 text-3xl font-serif">
             {price(p.pricePerMetre)} <span className="text-base font-sans text-mist">{tp.perMetre}</span>
           </p>
-          <p className="text-xs uppercase tracking-[0.12em] text-gold/80">{tp.vatIncluded} · {tp.samplePrice}</p>
+          <p className="text-xs uppercase tracking-[0.12em] text-gold/80">{tp.vatIncluded}{SITE_LIVE ? "" : ` · ${tp.samplePrice}`}</p>
 
           <div className="mt-8 rounded-[1.75rem] border border-line p-6">
             <label htmlFor={qtyId} className="eyebrow">{tp.length}</label>
@@ -162,7 +163,7 @@ export function ProductView({ p }: { p: Product }) {
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-gold/80">{tp.specsNote}</p>
+          {!SITE_LIVE && <p className="mt-3 text-xs text-gold/80">{tp.specsNote}</p>}
         </div>
       </section>
 

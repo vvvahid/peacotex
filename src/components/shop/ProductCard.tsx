@@ -5,6 +5,7 @@ import { FabricCanvas } from "@/components/fabric/FabricCanvas";
 import { StockPhoto } from "@/components/ui/StockPhoto";
 import type { Product } from "@/lib/catalog";
 import { useI18n } from "@/i18n/client";
+import { SITE_LIVE } from "@/lib/site";
 
 export function ProductCard({ p, headingLevel = 3 }: { p: Product; headingLevel?: 2 | 3 }) {
   const { t, href, price } = useI18n();
@@ -31,7 +32,7 @@ export function ProductCard({ p, headingLevel = 3 }: { p: Product; headingLevel?
         </div>
         <p className="shrink-0 text-right text-sm">
           {price(p.pricePerMetre)}<span className="text-mist"> / m</span>
-          <span className="mt-1 block text-[0.6875rem] uppercase tracking-[0.12em] text-gold/80">{t.card.samplePrice}</span>
+          {!SITE_LIVE && <span className="mt-1 block text-[0.6875rem] uppercase tracking-[0.12em] text-gold/80">{t.card.samplePrice}</span>}
         </p>
       </div>
     </article>

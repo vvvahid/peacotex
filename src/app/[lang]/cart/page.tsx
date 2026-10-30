@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/client";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
 import { BuyerDetails, useBuyer, type VatResult } from "@/components/cart/BuyerDetails";
 import { moneyOf } from "@/lib/money";
+import { SITE_LIVE } from "@/lib/site";
 
 export default function CartPage() {
   const i18n = useI18n();
@@ -128,7 +129,7 @@ export default function CartPage() {
               <div className="flex justify-between gap-4"><dt className="text-mist">{c.shipping}</dt><dd className="text-right">{fabric.length ? c.shippingRolled : c.shippingSwatch}</dd></div>
             </dl>
             <p className="mt-6 flex justify-between border-t border-line pt-4 font-serif text-2xl"><span>{c.total}</span><span className="tabular-nums">{money.format(total)}</span></p>
-            <p className="mt-1 text-xs text-gold/80">{vatFree ? c.buyer.exclVat : t.product.vatIncluded} · {c.sampleNote}</p>
+            <p className="mt-1 text-xs text-gold/80">{vatFree ? c.buyer.exclVat : t.product.vatIncluded}{SITE_LIVE ? "" : ` · ${c.sampleNote}`}</p>
             <BuyerDetails buyer={buyer} onChange={setBuyer} check={vatCheck} onCheck={setVatCheck} />
             {fabric.length > 0 && (
               <p className="mt-6 rounded-2xl border border-line p-4 text-xs text-ivory/75">

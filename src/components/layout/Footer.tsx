@@ -5,6 +5,7 @@ import { useI18n } from "@/i18n/client";
 import { LogoFull } from "@/components/brand/Logo";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
 import { COMPANY, companyAddress } from "@/lib/company";
+import { SITE_LIVE } from "@/lib/site";
 
 export function Footer() {
   const { t, href, fill } = useI18n();
@@ -34,15 +35,17 @@ export function Footer() {
             <li><Link href={href("/service#ateliers")} className="hover:text-gold">{f.ateliers}</Link></li>
           </ul>
         </div>
-        <div>
-          <h2 className="eyebrow mb-4 font-sans">{f.aboutTitle}</h2>
-          <p className="text-sm text-mist">{f.about} <Link href={href("/credits")} className="underline underline-offset-2 hover:text-gold">{f.credits}</Link></p>
-        </div>
+        {!SITE_LIVE && (
+          <div>
+            <h2 className="eyebrow mb-4 font-sans">{f.aboutTitle}</h2>
+            <p className="text-sm text-mist">{f.about} <Link href={href("/credits")} className="underline underline-offset-2 hover:text-gold">{f.credits}</Link></p>
+          </div>
+        )}
       </div>
       <div className="border-t border-line px-4 py-6 sm:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
           <div className="text-center text-xs leading-relaxed text-mist sm:text-left">
-            <p>© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
+            <p>© {new Date().getFullYear()} Peacotex{SITE_LIVE ? "" : ` · ${f.demoSite}`}</p>
             {/* Seller details the EU requires on a web shop. */}
             <p>
               {fill(f.legal, { trade: COMPANY.tradeName, company: COMPANY.legalName })} · {companyAddress} · {f.vat} {COMPANY.vatNumber} ·{" "}

@@ -8,6 +8,7 @@ import { useI18n } from "@/i18n/client";
 import { LanguageMenu } from "@/components/layout/LanguageMenu";
 import { CurrencyMenu } from "@/components/layout/CurrencyMenu";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { SITE_LIVE } from "@/lib/site";
 
 export function Header() {
   const { count } = useCart();
@@ -40,7 +41,7 @@ export function Header() {
   }, [open]);
 
   return (
-    <header className={`fixed inset-x-0 top-8 z-50 transition-colors duration-500 ${solid || open ? "bg-ink/85 backdrop-blur-md border-b border-line" : "bg-transparent"}`}>
+    <header className={`fixed inset-x-0 ${SITE_LIVE ? "top-0" : "top-8"} z-50transition-colors duration-500 ${solid || open ? "bg-ink/85 backdrop-blur-md border-b border-line" : "bg-transparent"}`}>
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-8">
         <Link href={href("/")} className="flex shrink-0 items-center gap-2 sm:gap-3" aria-label={t.nav.home}>
           <LogoMark className="h-10 w-auto sm:h-12" />

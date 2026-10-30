@@ -19,8 +19,8 @@ const nextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // Demo site: never indexed.
-          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          // Until launch (NEXT_PUBLIC_SITE_LIVE=true, see src/lib/site.ts) the demo is never indexed.
+          ...(process.env.NEXT_PUBLIC_SITE_LIVE === "true" ? [] : [{ key: "X-Robots-Tag", value: "noindex, nofollow" }]),
         ],
       },
     ];

@@ -11,6 +11,7 @@ import { alternates, getDict, langOf } from "@/i18n/server";
 import { CatalogProvider } from "@/lib/catalog-client";
 import { getCatalog } from "@/server/catalog";
 import { getRates } from "@/server/rates";
+import { SITE_LIVE } from "@/lib/site";
 import "../globals.css";
 
 // latin-ext carries the letters of Polish, Czech, Romanian and Hungarian (ł, ř, ș, ő…).
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
     title: { default: t.meta.title, template: "%s · Peacotex" },
     description: t.meta.description,
     alternates: alternates(lang, "/"),
-    robots: { index: false, follow: false },
+    robots: SITE_LIVE ? { index: true, follow: true } : { index: false, follow: false },
   };
 }
 
@@ -58,10 +59,12 @@ export default async function RootLayout({ children, params }: { children: React
         <I18nProvider lang={lang} dict={clientDict} rates={rates}>
           <CatalogProvider products={products}>
             <CartProvider>
-              <p className="fixed inset-x-0 top-0 z-[60] flex h-8 items-center justify-center gap-2 bg-gold px-3 text-center text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-ink">
-                <span className="sm:hidden">{t.banner.short}</span>
-                <span className="hidden sm:inline">{t.banner.long}</span>
-              </p>
+              {!SITE_LIVE && (
+                <p className="fixed inset-x-0 top-0 z-[60] flex h-8 items-center justify-center gap-2 bg-gold px-3 text-center text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-ink">
+                  <span className="sm:hidden">{t.banner.short}</span>
+                  <span className="hidden sm:inline">{t.banner.long}</span>
+                </p>
+              )}
               <Header />
               <main id="main" tabIndex={-1} className="outline-none">{children}</main>
               <Footer />

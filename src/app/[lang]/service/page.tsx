@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SWATCH_PRICE, SWATCH_SIZE } from "@/lib/catalog";
 import { alternates, getI18n, getMoney, langOf } from "@/i18n/server";
+import { SITE_LIVE } from "@/lib/site";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const lang = await langOf(params);
@@ -20,7 +21,7 @@ export default async function ServicePage({ params }: { params: Promise<{ lang: 
     <div className="mx-auto max-w-[1100px] px-4 pb-32 pt-40 sm:px-8">
       <p className="eyebrow">{sv.eyebrow}</p>
       <h1 className="mt-3 text-[clamp(2.8rem,6vw,5.5rem)] font-light">{sv.title}</h1>
-      <p className="mt-4 text-sm text-gold/80">{sv.demoNote}</p>
+      {!SITE_LIVE && <p className="mt-4 text-sm text-gold/80">{sv.demoNote}</p>}
       <div className="mt-16 space-y-6">
         {ORDER.map((id) => {
           const s = sv.sections[id];
