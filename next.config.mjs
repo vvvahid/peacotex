@@ -10,6 +10,8 @@ const nextConfig = {
   images: { deviceSizes: [480, 600, 800, 900, 1200, 1800, 2400], imageSizes: [240] },
   // Photo uploads from the admin (resized in the browser first; Vercel caps requests at 4.5 MB).
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  // A fresh id per build: caches keyed on it (src/server/catalog.ts) never carry over from an earlier build.
+  env: { PTX_BUILD_ID: String(Date.now()) },
   async headers() {
     return [
       {

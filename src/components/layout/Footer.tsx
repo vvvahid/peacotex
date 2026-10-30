@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import { PaymentMethods } from "@/components/ui/PaymentMethods";
 
 export function Footer() {
   const { t, href } = useI18n();
@@ -36,7 +37,12 @@ export function Footer() {
           <p className="text-sm text-mist">{f.about} <Link href={href("/credits")} className="underline underline-offset-2 hover:text-gold">{f.credits}</Link></p>
         </div>
       </div>
-      <p className="border-t border-line px-4 py-6 text-center text-xs text-mist">© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
+      <div className="border-t border-line px-4 py-6 sm:px-8">
+        <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
+          <p className="text-xs text-mist">© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
+          <PaymentMethods title={false} className="flex justify-center" />
+        </div>
+      </div>
     </footer>
   );
 }

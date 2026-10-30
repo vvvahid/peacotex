@@ -374,6 +374,7 @@ const nl: Dict = {
     title: "Deze pagina is van de rol geknipt.",
     browse: "Stoffen bekijken",
   },
+  pay: { title: "Veilig betalen met" },
   catalog: {
     care: "Alleen professioneel chemisch reinigen. Opgerold op een koker bewaren, nooit gevouwen. Aan de achterkant stomen.",
     stretchSlight: "Licht (2 richtingen)",

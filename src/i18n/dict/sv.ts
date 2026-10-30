@@ -374,6 +374,7 @@ const sv: Dict = {
     title: "Den här sidan har klippts av rullen.",
     browse: "Se tygerna",
   },
+  pay: { title: "Betala säkert med" },
   catalog: {
     care: "Endast professionell kemtvätt. Förvara rullat på en rulle, aldrig vikt. Ånga från avigsidan.",
     stretchSlight: "Lätt (2-vägs)",

@@ -374,6 +374,7 @@ const fi: Dict = {
     title: "Tämä sivu on leikattu rullasta.",
     browse: "Selaa kankaita",
   },
+  pay: { title: "Maksa turvallisesti:" },
   catalog: {
     care: "Vain ammattimainen kemiallinen pesu. Säilytä rullattuna, ei koskaan taiteltuna. Höyrytä nurjalta puolelta.",
     stretchSlight: "Kevyt (2-suuntainen)",

@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart";
 import { photoUrl } from "@/lib/photos";
 import { SWATCH_PRICE, SWATCH_SIZE, completeTheLook, type Product } from "@/lib/catalog";
 import { useI18n } from "@/i18n/client";
+import { PaymentMethods } from "@/components/ui/PaymentMethods";
 
 const STEP = 0.5;
 const MAX = 40;
@@ -110,6 +111,7 @@ export function ProductView({ p }: { p: Product }) {
               {swatches >= 5 && !hasSwatch && ` ${tp.swatchMax}`}
             </p>
             <p role="status" className="mt-3 min-h-5 text-sm text-gold">{flash && <>{flash} <Link href={href("/cart")} className="underline underline-offset-4">{tp.viewBag}</Link></>}</p>
+            <PaymentMethods className="mt-3 border-t border-line pt-4" />
           </div>
 
           <ul className="mt-6 grid gap-3 text-sm text-ivory/75 sm:grid-cols-2">

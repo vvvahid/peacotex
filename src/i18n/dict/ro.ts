@@ -374,6 +374,7 @@ const ro: Dict = {
     title: "Această pagină a fost tăiată de pe sul.",
     browse: "Vezi țesăturile",
   },
+  pay: { title: "Plătiți în siguranță cu" },
   catalog: {
     care: "Doar curățare chimică profesională. Păstrați rulată pe un tub, niciodată împăturită. Aburiți pe dos.",
     stretchSlight: "Ușoară (2 direcții)",

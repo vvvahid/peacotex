@@ -374,6 +374,7 @@ const pl: Dict = {
     title: "Tę stronę odcięto od beli.",
     browse: "Przeglądaj tkaniny",
   },
+  pay: { title: "Bezpieczna płatność:" },
   catalog: {
     care: "Wyłącznie profesjonalne czyszczenie chemiczne. Przechowywać nawinięte na tubę, nigdy złożone. Prasować parą od lewej strony.",
     stretchSlight: "Lekka (w 2 kierunkach)",

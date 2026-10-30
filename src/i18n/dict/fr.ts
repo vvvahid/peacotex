@@ -374,6 +374,7 @@ const fr: Dict = {
     title: "Cette page a été coupée du rouleau.",
     browse: "Voir les tissus",
   },
+  pay: { title: "Paiement sécurisé avec" },
   catalog: {
     care: "Nettoyage à sec professionnel uniquement. Conserver roulé sur un tube, jamais plié. Défroisser à la vapeur sur l'envers.",
     stretchSlight: "Légère (2 sens)",

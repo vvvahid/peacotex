@@ -374,6 +374,7 @@ const da: Dict = {
     title: "Denne side er klippet af rullen.",
     browse: "Se stofferne",
   },
+  pay: { title: "Betal sikkert med" },
   catalog: {
     care: "Kun professionel rensning. Opbevares rullet på en rulle, aldrig foldet. Damp fra vrangsiden.",
     stretchSlight: "Let (2-vejs)",

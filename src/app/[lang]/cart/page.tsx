@@ -6,6 +6,7 @@ import { linePrice, lineName, useCart } from "@/lib/cart";
 import { COMPLEMENTS, SWATCH_SIZE } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
+import { PaymentMethods } from "@/components/ui/PaymentMethods";
 
 export default function CartPage() {
   const i18n = useI18n();
@@ -72,30 +73,35 @@ export default function CartPage() {
               const byMetre = l.kind === "fabric" || (comp?.unit === "m");
               const name = lineName(l, getProduct, i18n);
               return (
-                <li key={`${l.kind}-${l.slug}`} className="flex flex-wrap items-center gap-5 py-6">
-                  <span aria-hidden className="h-20 w-16 shrink-0 rounded-xl border border-line" style={{ background: p ? `radial-gradient(circle at 30% 25%, ${p.look.glint}55, ${p.look.ink} 35%, ${p.look.base} 80%)` : "linear-gradient(135deg,#3a332b,#13110e)" }} />
-                  {/* A 12rem minimum pushes the quantity and price onto their own line on phones. */}
-                  <div className="min-w-0 flex-1 basis-48">
+                // Every row has the same shape: swatch and name on top, then quantity, price and Remove on one line below.
+                <li key={`${l.kind}-${l.slug}`} className="grid grid-cols-[4rem_minmax(0,1fr)] gap-x-5 gap-y-3 py-6">
+                  <span aria-hidden className="row-span-2 h-20 w-16 rounded-xl border border-line" style={{ background: p ? `radial-gradient(circle at 30% 25%, ${p.look.glint}55, ${p.look.ink} 35%, ${p.look.base} 80%)` : "linear-gradient(135deg,#3a332b,#13110e)" }} />
+                  <div className="min-w-0">
                     <p className="font-serif text-2xl">{name}</p>
                     <p className="text-sm text-mist">
                       {l.kind === "swatch" ? fill(c.swatchLine, { size: SWATCH_SIZE }) : l.kind === "fabric" ? fill(c.fabricLine, { price: price(p!.pricePerMetre) }) : comp && i18n.complement(comp).note}
                     </p>
                   </div>
-                  {l.kind !== "swatch" && (
-                    <label className="flex items-center gap-2 text-sm text-mist">
-                      {byMetre ? c.metres : c.qty}
-                      <select
-                        value={l.qty} onChange={(e) => setQty(l.kind, l.slug, Number(e.target.value))}
-                        className="h-10 rounded-full border border-line bg-ink px-3 text-ivory"
-                      >
-                        {(byMetre ? Array.from({ length: 79 }, (_, i) => 1 + i * 0.5) : [1, 2, 3, 4, 5, 6]).map((v) => <option key={v} value={v}>{byMetre ? m(v) : v}</option>)}
-                      </select>
-                    </label>
-                  )}
-                  <span className="w-24 text-right tabular-nums">{money.format(linePrice(l, getProduct, money.unit))}</span>
-                  <button type="button" onClick={() => remove(l.kind, l.slug)} className="text-sm text-mist underline underline-offset-4 hover:text-gold">
-                    {c.remove}<span className="sr-only"> {name}</span>
-                  </button>
+                  <div className="flex min-h-10 flex-wrap items-center gap-x-5 gap-y-2">
+                    {l.kind !== "swatch" && (
+                      <label className="flex items-center gap-2 text-sm text-mist">
+                        <span className="sr-only sm:not-sr-only">{byMetre ? c.metres : c.qty}</span>
+                        <select
+                          value={l.qty} onChange={(e) => setQty(l.kind, l.slug, Number(e.target.value))}
+                          className="h-10 rounded-full border border-line bg-ink px-3 text-ivory"
+                        >
+                          {(byMetre ? Array.from({ length: 79 }, (_, i) => 1 + i * 0.5) : [1, 2, 3, 4, 5, 6]).map((v) => <option key={v} value={v}>{byMetre ? m(v) : v}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    {/* Price and Remove stay together at the right, even when the line wraps. */}
+                    <div className="ml-auto flex items-center gap-5 whitespace-nowrap">
+                      <span className="tabular-nums">{money.format(linePrice(l, getProduct, money.unit))}</span>
+                      <button type="button" onClick={() => remove(l.kind, l.slug)} className="text-sm text-mist underline underline-offset-4 hover:text-gold">
+                        {c.remove}<span className="sr-only"> {name}</span>
+                      </button>
+                    </div>
+                  </div>
                 </li>
               );
             })}
@@ -120,6 +126,7 @@ export default function CartPage() {
             </button>
             <p id="checkout-msg" role="alert" className="mt-3 min-h-5 text-sm text-gold">{error ?? (cancelled ? c.cancelled : "")}</p>
             <p className="text-xs text-mist">{c.stripeNote}</p>
+            <PaymentMethods className="mt-5 border-t border-line pt-5" />
             <button type="button" onClick={clear} className="mt-4 w-full text-sm text-mist underline underline-offset-4">{c.empty}</button>
           </aside>
         </div>

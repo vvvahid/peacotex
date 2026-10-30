@@ -374,6 +374,7 @@ const hu: Dict = {
     title: "Ezt az oldalt levágták a végről.",
     browse: "Anyagok böngészése",
   },
+  pay: { title: "Biztonságos fizetés:" },
   catalog: {
     care: "Csak szakszerű vegytisztítás. Hengerre tekerve tárolja, sosem hajtogatva. A visszájáról gőzölje.",
     stretchSlight: "Enyhe (2 irányú)",

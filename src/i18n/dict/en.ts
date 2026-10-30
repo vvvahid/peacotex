@@ -381,6 +381,7 @@ const en = {
     title: "This page has been cut from the roll.",
     browse: "Browse fabrics",
   },
+  pay: { title: "Pay securely with" },
   catalog: {
     care: "Specialist dry clean only. Store rolled on a tube, never folded. Steam from the reverse.",
     stretchSlight: "Slight (2-way)",

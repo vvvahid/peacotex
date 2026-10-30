@@ -145,7 +145,13 @@ export async function loadRecord(slug: string, db?: Queryable): Promise<FabricRe
  * use separate cache keys: a build without database access must not leave the seed in the cache.
  */
 const cachedRecords = (phase: string) =>
-  unstable_cache(async () => (dbReadable() ? loadRecords() : seedRecords()), ["catalog-records", phase], { tags: ["catalog"] })();
+  // The build id keeps a copy from an earlier build (the build cache survives deploys) out of this one;
+  // revalidate bounds how long a copy can lag behind changes made outside the admin.
+  unstable_cache(
+    async () => (dbReadable() ? loadRecords() : seedRecords()),
+    ["catalog-records", phase, process.env.PTX_BUILD_ID ?? "dev"],
+    { tags: ["catalog"], revalidate: 300 },
+  )();
 
 /** Records for the public site: cached, and the seed when there is no database (or it fails). */
 async function siteRecords(): Promise<FabricRecord[]> {

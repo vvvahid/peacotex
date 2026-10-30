@@ -41,7 +41,7 @@ export function Header() {
   return (
     <header className={`fixed inset-x-0 top-8 z-50 transition-colors duration-500 ${solid || open ? "bg-ink/85 backdrop-blur-md border-b border-line" : "bg-transparent"}`}>
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-8">
-        <Link href={href("/")} className="font-serif text-[1.55rem] font-light tracking-[0.3em]" aria-label={t.nav.home}>
+        <Link href={href("/")} className="font-serif text-[1.25rem] font-light tracking-[0.22em] sm:text-[1.55rem] sm:tracking-[0.3em]" aria-label={t.nav.home}>
           PEACOTEX
         </Link>
         <nav aria-label={t.nav.main} className="hidden lg:block">
@@ -53,11 +53,12 @@ export function Header() {
             ))}
           </ul>
         </nav>
-        <div className="flex items-center gap-1">
+        <div className="-mr-2 flex items-center sm:mr-0 sm:gap-1">
           <LanguageMenu />
           <CurrencyMenu />
           <Link href={href("/cart")} className="flex h-11 items-center gap-2 rounded-full px-3 text-[0.8125rem] uppercase tracking-[0.2em] hover:text-gold">
-            {t.nav.bag} <span className="grid h-6 min-w-6 place-items-center rounded-full bg-gold px-1.5 text-[0.75rem] tracking-normal text-ink" aria-label={plural(t.nav.bagItems, count)}>{count}</span>
+            {/* On phones only the count shows: the language and currency menus need the room. */}
+            <span className="sr-only sm:not-sr-only">{t.nav.bag}</span> <span className="grid h-6 min-w-6 place-items-center rounded-full bg-gold px-1.5 text-[0.75rem] tracking-normal text-ink" aria-label={plural(t.nav.bagItems, count)}>{count}</span>
           </Link>
           <button
             type="button" className="grid h-11 w-11 place-items-center lg:hidden" aria-expanded={open} aria-controls="mobile-menu"

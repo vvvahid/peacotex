@@ -374,6 +374,7 @@ const de: Dict = {
     title: "Diese Seite wurde von der Rolle geschnitten.",
     browse: "Stoffe ansehen",
   },
+  pay: { title: "Sicher bezahlen mit" },
   catalog: {
     care: "Nur professionelle Reinigung. Auf einer Rolle gewickelt lagern, nie gefaltet. Von links dämpfen.",
     stretchSlight: "Leicht (2-Wege)",

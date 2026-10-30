@@ -37,7 +37,7 @@ export function LanguageMenu() {
     <div ref={box} className="relative">
       <button
         type="button" aria-expanded={open} aria-controls="language-list" onClick={() => setOpen((o) => !o)}
-        className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] uppercase tracking-[0.2em] hover:text-gold"
+        className="flex h-11 items-center gap-1.5 rounded-full px-2 text-[0.8125rem] sm:px-3 uppercase tracking-[0.2em] hover:text-gold"
       >
         <span className="sr-only">{t.nav.language}: </span>{lang}
         <span aria-hidden className={`text-[0.6rem] transition-transform ${open ? "rotate-180" : ""}`}>▾</span>

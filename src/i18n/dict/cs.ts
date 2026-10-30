@@ -374,6 +374,7 @@ const cs: Dict = {
     title: "Tato stránka byla odstřižena z role.",
     browse: "Prohlédnout látky",
   },
+  pay: { title: "Bezpečná platba:" },
   catalog: {
     care: "Pouze profesionální chemické čištění. Skladujte navinuté na tubě, nikdy přeložené. Napařujte z rubu.",
     stretchSlight: "Mírná (2 směry)",
