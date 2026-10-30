@@ -37,17 +37,7 @@ export async function checkVat(raw: string): Promise<VatCheck> {
   const hit = cache.get(id);
   if (hit && Date.now() - hit.at < 3600_000) return hit.result;
   try {
-    const test = process.env.VIES_TEST === "1";
-    const res = await fetch(`${BASE}/${test ? "check-vat-test-service" : "check-vat-number"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ countryCode: prefix, vatNumber: number }),
-      signal: AbortSignal.timeout(8000),
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`VIES ${res.status}`);
-    const data = (await res.json()) as { valid?: boolean; name?: string; userError?: string };
-    if (data.userError && !["VALID", "INVALID", "INVALID_INPUT"].includes(data.userError)) throw new Error(`VIES ${data.userError}`);
+    const data = await askVies(prefix, number);
     const name = data.name && data.name !== "---" ? data.name.trim() : undefined;
     const result: VatCheck = { valid: !!data.valid, country: shipCountry, vatId: id, ...(name && { name }) };
     cache.set(id, { at: Date.now(), result });
@@ -56,4 +46,42 @@ export async function checkVat(raw: string): Promise<VatCheck> {
     console.error("VIES check failed", err);
     return { valid: false, unavailable: true, country: shipCountry, vatId: id };
   }
+}
+
+type ViesAnswer = { valid: boolean; name?: string };
+
+/*
+ * VIES reports a busy or offline national service with HTTP 200 and
+ * {actionSucceed: false, errorWrappers: [{error: "MS_MAX_CONCURRENT_REQ"}]} and no "valid" field.
+ * That is "unavailable", never "invalid"; busy answers usually clear within seconds, so retry briefly.
+ */
+async function askVies(countryCode: string, vatNumber: string, attempts = 3): Promise<ViesAnswer> {
+  const test = process.env.VIES_TEST === "1";
+  let lastError = "";
+  for (let i = 0; i < attempts; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 700 * i));
+    const res = await fetch(`${BASE}/${test ? "check-vat-test-service" : "check-vat-number"}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ countryCode, vatNumber }),
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      lastError = `HTTP ${res.status}`;
+      continue;
+    }
+    const data = (await res.json()) as {
+      valid?: boolean;
+      name?: string;
+      userError?: string;
+      actionSucceed?: boolean;
+      errorWrappers?: { error?: string }[];
+    };
+    if (typeof data.valid === "boolean" && (!data.userError || ["VALID", "INVALID", "INVALID_INPUT"].includes(data.userError))) {
+      return { valid: data.valid, name: data.name };
+    }
+    lastError = data.errorWrappers?.map((e) => e.error).join(",") || data.userError || "no answer";
+  }
+  throw new Error(`VIES ${lastError}`);
 }
