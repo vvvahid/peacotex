@@ -38,6 +38,8 @@ export interface OrderDetail extends OrderRow {
   customer: Customer | null; trackingNumber: string | null; trackingUrl: string | null; shippedAt: string | null;
   stripeUrl: string | null; fxRate: number;
   vat: { country: string; rate: number; cents: number } | null;
+  customerType: "private" | "business"; company: string | null; vatId: string | null; vatTreatment: string;
+  invoiceNumber: string | null; emailSentAt: string | null;
   lines: { kind: string; slug: string; name: string; qty: number; unit: string; totalCents: number }[];
 }
 
@@ -80,7 +82,9 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
     note: string | null; tracking_number: string | null; tracking_url: string | null; shipped_at: string | null;
     payment_intent: string | null; stripe_session_id: string | null; fx_rate: string;
     vat_country: string | null; vat_rate: string | null; vat_cents: number | null;
-  }>(`SELECT o.*, (SELECT count(*) FROM order_lines l WHERE l.order_id = o.id) AS items FROM orders o WHERE o.id = $1`, [id]);
+    customer_type: "private" | "business"; company_name: string | null; vat_id: string | null; vat_treatment: string; email_sent_at: string | null; invoice: string | null;
+  }>(`SELECT o.*, (SELECT count(*) FROM order_lines l WHERE l.order_id = o.id) AS items, (SELECT number FROM invoices i WHERE i.order_id = o.id) AS invoice
+     FROM orders o WHERE o.id = $1`, [id]);
   const o = rows[0];
   if (!o) return null;
   const lines = await db.query<{ kind: string; slug: string; name: string; qty: string; unit: string; total_cents: number }>(
@@ -94,6 +98,8 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
     stripeUrl: o.payment_intent ? `https://dashboard.stripe.com/${test ? "test/" : ""}payments/${o.payment_intent}` : null,
     fxRate: Number(o.fx_rate),
     vat: o.vat_country && o.vat_cents != null ? { country: o.vat_country, rate: Number(o.vat_rate), cents: o.vat_cents } : null,
+    customerType: o.customer_type, company: o.company_name, vatId: o.vat_id, vatTreatment: o.vat_treatment,
+    invoiceNumber: o.invoice, emailSentAt: iso(o.email_sent_at),
     lines: lines.rows.map((l) => ({ kind: l.kind, slug: l.slug, name: l.name, qty: Number(l.qty), unit: l.unit, totalCents: l.total_cents })),
   };
 }

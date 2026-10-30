@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { FabricError } from "@/server/catalog";
 import { AdminError, changeOrder, getFabric, saveFabric, setFabricFlag, storeImage } from "@/server/admin";
-import { login, logout, requireAdmin } from "@/server/admin-auth";
+import { login, logout, logAdmin, requireAdmin } from "@/server/admin-auth";
+import { deliverConfirmation } from "@/server/order-mail";
 import { LOCALES } from "@/i18n/config";
 
 export type FormState = { error?: string } | undefined;
@@ -38,6 +39,21 @@ export async function orderAction(form: FormData) {
     throw err;
   }
   back(`/admin/orders/${id}`, { done: action });
+}
+
+/** Sends the order confirmation with its invoice again (to the customer, copy to the shop). */
+export async function resendConfirmationAction(form: FormData) {
+  await requireAdmin();
+  const id = String(form.get("id") ?? "");
+  let ok = false;
+  try {
+    ok = await deliverConfirmation(id, true);
+  } catch (err) {
+    console.error("resend confirmation failed", err);
+  }
+  if (!ok) back(`/admin/orders/${id}`, { error: "The email could not be sent. Check the mail settings (RESEND_API_KEY)." });
+  await logAdmin("order:resend-confirmation", id);
+  back(`/admin/orders/${id}`, { done: "resend" });
 }
 
 export async function fabricFlagAction(form: FormData) {

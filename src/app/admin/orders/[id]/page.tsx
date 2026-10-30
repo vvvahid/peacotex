@@ -3,13 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrder, type Customer } from "@/server/admin";
 import { requireAdmin } from "@/server/admin-auth";
-import { orderAction } from "../../actions";
+import { orderAction, resendConfirmationAction } from "../../actions";
 import { Notice, StatusBadge, euro, field, when } from "../../ui";
 
 export const metadata: Metadata = { title: "Order" };
 
 const DONE: Record<string, string> = {
-  cut: "Marked as cut.", ship: "Marked as shipped.", resolve: "Marked as checked: back to “to cut”.", cancel: "Order cancelled.", note: "Note saved.",
+  cut: "Marked as cut.", ship: "Marked as shipped.", resend: "Confirmation and invoice sent again.", resolve: "Marked as checked: back to “to cut”.", cancel: "Order cancelled.", note: "Note saved.",
 };
 
 function Address({ c }: { c: Customer | null }) {
@@ -106,7 +106,10 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         <aside className="space-y-8">
           <section aria-labelledby="cust" className="card p-6 text-sm">
             <h2 id="cust" className="text-2xl">Customer</h2>
-            <p className="mt-4">{o.email ? <a href={`mailto:${o.email}`} className="text-gold underline underline-offset-4">{o.email}</a> : <span className="text-mist">No email yet</span>}</p>
+            {o.customerType === "business" ? (
+              <p className="mt-4"><span className="font-medium">{o.company}</span><span className="block text-xs text-mist">Business · VAT {o.vatId}</span></p>
+            ) : <p className="mt-4 text-xs text-mist">Private customer</p>}
+            <p className="mt-3">{o.email ? <a href={`mailto:${o.email}`} className="text-gold underline underline-offset-4">{o.email}</a> : <span className="text-mist">No email yet</span>}</p>
             {o.customer?.details?.phone && <p className="mt-1">{o.customer.details.phone}</p>}
             <h3 className="mt-5 text-xs uppercase tracking-[0.2em] text-mist">Ship to</h3>
             <div className="mt-2"><Address c={o.customer} /></div>
@@ -119,6 +122,23 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               {o.trackingUrl && <a href={o.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-gold underline underline-offset-4">Track parcel ↗</a>}
             </section>
           )}
+
+          <section aria-labelledby="inv" className="card p-6 text-sm">
+            <h2 id="inv" className="text-2xl">Invoice</h2>
+            {o.invoiceNumber ? (
+              <>
+                <p className="mt-4"><a href={`/admin/orders/${o.id}/invoice`} target="_blank" rel="noopener" className="text-gold underline underline-offset-4">Invoice {o.invoiceNumber} (PDF) ↗</a></p>
+                <p className="mt-1 text-xs text-mist">
+                  {o.vatTreatment === "reverse_charge" ? "VAT reverse charged (EU business)" : o.vatTreatment === "export" ? "No VAT (export)" : "VAT included"}
+                  {" · "}{o.emailSentAt ? `emailed ${when(o.emailSentAt)}` : "not emailed yet"}
+                </p>
+                <form action={resendConfirmationAction} className="mt-3">
+                  <input type="hidden" name="id" value={o.id} />
+                  <button type="submit" className="btn btn-line min-h-0 px-4 py-2">Send email again</button>
+                </form>
+              </>
+            ) : <p className="mt-4 text-mist">An invoice is issued when the order is paid.</p>}
+          </section>
 
           <section aria-labelledby="pay" className="card p-6 text-sm">
             <h2 id="pay" className="text-2xl">Payment</h2>

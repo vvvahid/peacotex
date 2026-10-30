@@ -36,6 +36,18 @@ export function localUnit(eur: number, cur: Currency, rates: Rates): number {
 /** Amount in minor units (cents, grosze…) for Stripe and the database. */
 export const toMinor = (amount: number) => Math.round(amount * 100);
 
+/** Catalogue prices include Belgian VAT (the seller's country). */
+export const HOME_VAT = 0.21;
+
+/**
+ * A unit price without Belgian VAT, for VAT-free business sales (reverse charge, export). To the
+ * cent; Czech koruna and forint to whole units (Stripe charges those without decimals).
+ */
+export function netUnit(localGross: number, cur: Currency): number {
+  const net = localGross / (1 + HOME_VAT);
+  return cur === "CZK" || cur === "HUF" ? Math.round(net) : Math.round(net * 100) / 100;
+}
+
 export function formatMoney(amount: number, cur: Currency, lang: Locale) {
   const whole = Math.abs(amount % 1) < 1e-9;
   return new Intl.NumberFormat(INTL_LOCALE[lang], {
@@ -45,11 +57,12 @@ export function formatMoney(amount: number, cur: Currency, lang: Locale) {
 }
 
 /** The currency an order or line is charged in, with its tidy local prices. */
-export function moneyOf(cur: Currency, rates: Rates, lang: Locale) {
-  const unit = (eur: number) => localUnit(eur, cur, rates);
+export function moneyOf(cur: Currency, rates: Rates, lang: Locale, vatFree = false) {
+  const unit = (eur: number) => (vatFree ? netUnit(localUnit(eur, cur, rates), cur) : localUnit(eur, cur, rates));
   return {
     cur,
     rate: rates[cur],
+    vatFree,
     unit,
     format: (amount: number) => formatMoney(amount, cur, lang),
     /** A euro unit price, converted, times a quantity, formatted. */

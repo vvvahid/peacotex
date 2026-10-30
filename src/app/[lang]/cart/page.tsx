@@ -7,35 +7,49 @@ import { COMPLEMENTS, SWATCH_SIZE } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-client";
 import { useI18n } from "@/i18n/client";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
+import { BuyerDetails, useBuyer, type VatResult } from "@/components/cart/BuyerDetails";
+import { moneyOf } from "@/lib/money";
 
 export default function CartPage() {
   const i18n = useI18n();
-  const { t, fill, href, price, metres: m, lang, money } = i18n;
+  const { t, fill, href, metres: m, lang, rates } = i18n;
   const c = t.cart;
-  const { lines, total, setQty, remove, clear } = useCart();
+  const { lines, setQty, remove, clear } = useCart();
+  const [buyer, setBuyer] = useBuyer();
+  const [vatCheck, setVatCheck] = useState<VatResult | null>(null);
+  // An EU business outside Belgium (valid VAT number) or a Norwegian business pays without VAT.
+  const vatFree = buyer.type === "business" && !!vatCheck?.valid && vatCheck.treatment !== "standard";
+  const money = vatFree ? moneyOf(i18n.money.cur, rates, lang, true) : i18n.money;
+  const price = money.price;
   const { get: getProduct } = useCatalog();
   const [placed, setPlaced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const fabric = lines.filter((l) => l.kind === "fabric");
+  const total = lines.reduce((a, l) => a + linePrice(l, getProduct, money.unit), 0);
 
   useEffect(() => { setCancelled(new URLSearchParams(window.location.search).has("cancelled")); }, []);
 
   // The server re-prices the bag from the catalogue and opens Stripe Checkout; we only send what was chosen.
   const checkout = async () => {
+    if (buyer.type === "business" && !vatCheck?.valid) { setError(vatCheck?.unavailable ? c.buyer.unavailable : c.buyer.required); return; }
     setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lang, currency: money.cur, lines: lines.map(({ kind, slug, qty }) => ({ kind, slug, qty })) }),
+        body: JSON.stringify({
+          lang, currency: money.cur, lines: lines.map(({ kind, slug, qty }) => ({ kind, slug, qty })),
+          buyer: buyer.type === "business" ? { type: "business", company: buyer.company, vatId: vatCheck?.vatId ?? buyer.vatId } : { type: "private" },
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) { window.location.assign(data.url); return; }
       if (data.error === "not_configured") setPlaced(true);
-      else setError(data.error === "stock" ? c.errorStock : c.errorGeneric);
+      else setError(data.error === "stock" ? c.errorStock : data.error === "vat_invalid" ? c.buyer.invalid : data.error === "vat_unavailable" ? c.buyer.unavailable
+        : data.error === "business_details" ? c.buyer.required : c.errorGeneric);
     } catch {
       setError(c.errorOffline);
     }
@@ -114,7 +128,8 @@ export default function CartPage() {
               <div className="flex justify-between gap-4"><dt className="text-mist">{c.shipping}</dt><dd className="text-right">{fabric.length ? c.shippingRolled : c.shippingSwatch}</dd></div>
             </dl>
             <p className="mt-6 flex justify-between border-t border-line pt-4 font-serif text-2xl"><span>{c.total}</span><span className="tabular-nums">{money.format(total)}</span></p>
-            <p className="mt-1 text-xs text-gold/80">{t.product.vatIncluded} · {c.sampleNote}</p>
+            <p className="mt-1 text-xs text-gold/80">{vatFree ? c.buyer.exclVat : t.product.vatIncluded} · {c.sampleNote}</p>
+            <BuyerDetails buyer={buyer} onChange={setBuyer} check={vatCheck} onCheck={setVatCheck} />
             {fabric.length > 0 && (
               <p className="mt-6 rounded-2xl border border-line p-4 text-xs text-ivory/75">
                 {c.cutNote}{" "}

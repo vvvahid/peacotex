@@ -52,7 +52,12 @@ export default async function SuccessPage({ params, searchParams }: { params: Pr
           <div className="flex justify-between gap-4 pt-3 font-serif text-2xl"><dt>{s.paid}</dt><dd className="tabular-nums">{price(order.totalCents / 100)}</dd></div>
         )}
       </dl>
-      <Link href={href("/shop")} className="btn btn-line mt-8">{s.continue}</Link>
+      <div className="mt-8 flex flex-wrap gap-3">
+        {order.invoiceNumber && (
+          <a href={`/api/invoice?session_id=${encodeURIComponent(session_id!)}`} target="_blank" rel="noopener" className="btn btn-gold">{fill(s.invoice, { number: order.invoiceNumber })}</a>
+        )}
+        <Link href={href("/shop")} className="btn btn-line">{s.continue}</Link>
+      </div>
     </div>
   );
 }

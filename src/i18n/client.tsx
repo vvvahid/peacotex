@@ -19,7 +19,7 @@ function useValue(lang: Locale, dict: Dict, rates: Rates) {
   }, []);
   return useMemo(() => {
     const money = moneyOf(cur, rates, lang);
-    return { ...makeI18n(lang, dict), money, price: money.price, setCurrency };
+    return { ...makeI18n(lang, dict), money, rates, price: money.price, setCurrency };
   }, [lang, dict, rates, cur, setCurrency]);
 }
 

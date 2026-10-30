@@ -7,7 +7,7 @@ shallower ATELIER / tagline lettering gets a gentler threshold. The gold is then
 it reads on a dark ground as it does on cream.
 
 Run from the project root:  python design/make-brand.py
-Writes public/brand/*.webp, src/app/icon.png and src/app/apple-icon.png.
+Writes public/brand/*.webp, public/brand/logo-email.png, assets/brand/logo-invoice.png, src/app/icon.png and src/app/apple-icon.png.
 """
 from PIL import Image, ImageFilter
 import numpy as np
@@ -38,6 +38,8 @@ alpha = np.asarray(alpha).astype(np.float32) / 255
 # Un-mix the paper from the edge pixels, then lift for the dark ground.
 al = alpha[..., None]
 col = np.where(al > 0.02, (a - (1 - al) * bg) / np.maximum(al, 0.02), 0)
+# Invoice letterhead (white paper): the original colours, without the lift.
+paper_logo = Image.fromarray(np.dstack([np.clip(col, 0, 255), alpha * 255]).astype(np.uint8), "RGBA")
 col = np.clip(((np.clip(col, 0, 255) / 255) ** GAMMA) * GAIN, 0, 1) * 255
 logo = Image.fromarray(np.dstack([col, alpha * 255]).astype(np.uint8), "RGBA")
 
@@ -54,6 +56,10 @@ word = trim(logo.crop((150, 548, 1390, 735)))       # PEACOTEX
 for name, img, widths in [("logo", full, [1200, 640]), ("mark", mark, [480, 240]), ("wordmark", word, [900, 450])]:
     for w in widths:
         img.resize((w, round(img.height * w / img.width)), Image.LANCZOS).save(f"public/brand/{name}-{w}.webp", "WEBP", quality=90, method=6)
+
+pl = trim(paper_logo)
+pl.resize((600, round(pl.height * 600 / pl.width)), Image.LANCZOS).save("assets/brand/logo-invoice.png", optimize=True)
+pl.resize((360, round(pl.height * 360 / pl.width)), Image.LANCZOS).save("public/brand/logo-email.png", optimize=True)  # email letterhead
 
 for size, path in [(512, "src/app/icon.png"), (180, "src/app/apple-icon.png")]:
     tile = Image.new("RGBA", (size, size), INK + (255,))

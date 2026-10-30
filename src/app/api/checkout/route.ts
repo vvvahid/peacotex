@@ -25,8 +25,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid", message: "Invalid request." }, { status: 400 });
   }
   try {
-    const { lines, lang, currency } = (body ?? {}) as { lines?: unknown; lang?: unknown; currency?: unknown };
-    const { url, reference } = await startCheckout(lines, origin, isLocale(lang) ? lang : DEFAULT_LOCALE, isCurrency(currency) ? currency : "EUR");
+    const { lines, lang, currency, buyer } = (body ?? {}) as { lines?: unknown; lang?: unknown; currency?: unknown; buyer?: { type?: unknown; company?: unknown; vatId?: unknown } };
+    const business = buyer?.type === "business";
+    const { url, reference } = await startCheckout(lines, origin, isLocale(lang) ? lang : DEFAULT_LOCALE, isCurrency(currency) ? currency : "EUR", {
+      type: business ? "business" : "private",
+      ...(business && { company: String(buyer?.company ?? ""), vatId: String(buyer?.vatId ?? "") }),
+    });
     return NextResponse.json({ url, reference });
   } catch (err) {
     if (err instanceof CheckoutError) return NextResponse.json({ error: err.code, message: err.message }, { status: err.status });

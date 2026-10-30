@@ -5,7 +5,10 @@ import { DEFAULT_LOCALE, localePath, type Locale } from "@/i18n/config";
 import { getI18n } from "@/i18n/server";
 import { moneyOf, toMinor, type Currency, type Money } from "@/lib/money";
 import { getRates } from "./rates";
-import { SHIP_COUNTRIES, vatOf } from "./vat";
+import { SHIP_COUNTRIES, treatmentFor, vatFor, type Buyer, type VatTreatment } from "./vat";
+import { checkVat } from "./vies";
+import { issueInvoice } from "./invoice";
+import { deliverConfirmation } from "./order-mail";
 import { loadRecords, toProduct } from "./catalog";
 import { getDb, type Queryable } from "./db";
 import { stockFor } from "./stock";
@@ -82,11 +85,24 @@ export function priceCart(input: unknown, fabrics: Map<string, Product>, money: 
 
 const newReference = () => `PTX-${randomBytes(4).toString("hex").toUpperCase()}`;
 
+/** Checks a business buyer's VAT number and decides how VAT applies (see server/vat.ts). */
+async function businessTerms(buyer: Buyer) {
+  const company = (buyer.company ?? "").trim().slice(0, 120);
+  if (!company || !buyer.vatId) throw new CheckoutError("business_details", "Enter your company name and VAT number.");
+  const check = await checkVat(buyer.vatId);
+  if (check.unavailable) throw new CheckoutError("vat_unavailable", "The EU VAT check is unavailable. Please try again.", 503);
+  if (!check.valid) throw new CheckoutError("vat_invalid", "This VAT number is not valid.");
+  return { company, vatId: check.vatId, country: check.country, treatment: treatmentFor(check) };
+}
+
 /** Validates the bag, records a pending order and opens a Stripe Checkout session for it. */
-export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE, currency: Currency = "EUR"): Promise<{ url: string; reference: string }> {
+export async function startCheckout(input: unknown, origin: string, lang: Locale = DEFAULT_LOCALE, currency: Currency = "EUR", buyer: Buyer = { type: "private" }): Promise<{ url: string; reference: string }> {
   const { t } = getI18n(lang);
   const db = await getDb();
-  const money = moneyOf(currency, await getRates(), lang);
+  const business = buyer.type === "business" ? await businessTerms(buyer) : null;
+  const treatment: VatTreatment = business?.treatment ?? "standard";
+  // VAT-free sales (reverse charge, export) pay the catalogue price without Belgian VAT.
+  const money = moneyOf(currency, await getRates(), lang, treatment !== "standard");
   // Prices straight from the database (not the page cache), so an admin price change applies at once.
   const fabrics = new Map((await loadRecords(db)).filter((r) => r.active).map((r) => [r.slug, toProduct(r, lang)]));
   const priced = priceCart(input, fabrics, money, lang);
@@ -102,8 +118,10 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
   const reference = newReference();
   const orderId = await db.transaction(async (tx) => {
     const { rows } = await tx.query<{ id: string }>(
-      "INSERT INTO orders (reference, subtotal_cents, shipping_cents, currency, fx_rate) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [reference, priced.subtotalCents, shippingCents, currency.toLowerCase(), money.rate],
+      `INSERT INTO orders (reference, subtotal_cents, shipping_cents, currency, fx_rate, lang, customer_type, company_name, vat_id, vat_treatment)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [reference, priced.subtotalCents, shippingCents, currency.toLowerCase(), money.rate, lang, buyer.type === "business" ? "business" : "private",
+        business?.company ?? null, business?.vatId ?? null, treatment],
     );
     const id = rows[0].id;
     for (const [i, l] of priced.lines.entries()) {
@@ -125,7 +143,8 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
     client_reference_id: orderId,
     metadata: { order_id: orderId, reference },
     payment_intent_data: { metadata: { order_id: orderId, reference }, description: `Peacotex order ${reference}` },
-    shipping_address_collection: { allowed_countries: SHIP_COUNTRIES },
+    // A VAT-free business sale must ship to the country of the buyer's VAT number.
+    shipping_address_collection: { allowed_countries: treatment === "standard" ? SHIP_COUNTRIES : [business!.country] },
     phone_number_collection: { enabled: true },
     shipping_options: [{
       shipping_rate_data: {
@@ -146,18 +165,20 @@ export async function startCheckout(input: unknown, origin: string, lang: Locale
 
 export interface OrderView {
   reference: string; status: string; totalCents: number | null; shippingCents: number; email: string | null; currency: Currency;
+  invoiceNumber: string | null;
   lines: { name: string; totalCents: number }[];
 }
 
 async function orderView(db: Queryable, sessionId: string): Promise<OrderView | null> {
-  const { rows } = await db.query<{ id: string; reference: string; status: string; total_cents: number | null; shipping_cents: number; email: string | null; currency: string }>(
-    "SELECT id, reference, status, total_cents, shipping_cents, email, currency FROM orders WHERE stripe_session_id = $1", [sessionId],
+  const { rows } = await db.query<{ id: string; reference: string; status: string; total_cents: number | null; shipping_cents: number; email: string | null; currency: string; invoice: string | null }>(
+    "SELECT o.id, o.reference, o.status, o.total_cents, o.shipping_cents, o.email, o.currency, i.number AS invoice FROM orders o LEFT JOIN invoices i ON i.order_id = o.id WHERE o.stripe_session_id = $1", [sessionId],
   );
   const o = rows[0];
   if (!o) return null;
   const lines = await db.query<{ name: string; total_cents: number }>("SELECT name, total_cents FROM order_lines WHERE order_id = $1 ORDER BY line_no", [o.id]);
   return {
     reference: o.reference, status: o.status, totalCents: o.total_cents, shippingCents: o.shipping_cents, email: o.email, currency: o.currency.toUpperCase() as Currency,
+    invoiceNumber: o.invoice,
     lines: lines.rows.map((l) => ({ name: l.name, totalCents: l.total_cents })),
   };
 }
@@ -177,10 +198,10 @@ export async function fulfil(sessionId: string): Promise<OrderView | null> {
   }
   if (session.payment_status === "paid") {
     await db.transaction(async (tx) => {
-      const { rows } = await tx.query<{ id: string; subtotal_cents: number; shipping_cents: number }>(
+      const { rows } = await tx.query<{ id: string; subtotal_cents: number; shipping_cents: number; vat_treatment: VatTreatment; customer_type: string }>(
         `UPDATE orders SET status = 'paid', paid_at = now(), payment_intent = $2, total_cents = $3, email = $4, customer = $5
          WHERE stripe_session_id = $1 AND id::text = $6 AND status IN ('pending', 'expired')
-         RETURNING id, subtotal_cents, shipping_cents`,
+         RETURNING id, subtotal_cents, shipping_cents, vat_treatment, customer_type`,
         [
           sessionId, session.payment_intent, session.amount_total, session.customer_details?.email ?? null,
           JSON.stringify({ details: session.customer_details ?? null, shipping: session.collected_information?.shipping_details ?? session.shipping_details ?? null }),
@@ -189,10 +210,10 @@ export async function fulfil(sessionId: string): Promise<OrderView | null> {
       );
       const order = rows[0];
       if (!order) return; // already fulfilled, or not ours
-      // VAT included in what was paid, for the destination country.
+      // VAT included in what was paid (none for reverse charge and export).
       const shipping = session.collected_information?.shipping_details ?? session.shipping_details;
       const country = (shipping as { address?: { country?: string } } | null)?.address?.country;
-      const vat = vatOf(session.amount_total ?? 0, country);
+      const vat = vatFor(session.amount_total ?? 0, order.vat_treatment, order.customer_type, country);
       if (vat) await tx.query("UPDATE orders SET vat_country = $2, vat_rate = $3, vat_cents = $4 WHERE id = $1", [order.id, vat.country, vat.rate, vat.cents]);
       const problems: string[] = [];
       if (session.amount_total !== order.subtotal_cents + order.shipping_cents) problems.push(`Amount paid ${session.amount_total} differs from order total ${order.subtotal_cents + order.shipping_cents}.`);
@@ -202,7 +223,14 @@ export async function fulfil(sessionId: string): Promise<OrderView | null> {
         if (!res.rows.length) problems.push(`Not enough stock for ${l.slug} (${l.qty} m) at payment time.`);
       }
       if (problems.length) await tx.query("UPDATE orders SET status = 'needs_attention', note = $2 WHERE id = $1", [order.id, problems.join(" ")]);
+      // The invoice is part of the payment: numbered in this transaction, so a number is never lost or reused.
+      await issueInvoice(tx, order.id);
     });
+    // Confirmation email with the invoice; a later call retries if it did not go out.
+    const { rows } = await db.query<{ id: string }>(
+      "SELECT id FROM orders WHERE stripe_session_id = $1 AND status IN ('paid', 'needs_attention', 'cut', 'shipped') AND email_sent_at IS NULL", [sessionId],
+    );
+    if (rows[0]) await deliverConfirmation(rows[0].id).catch((err) => console.error("confirmation email failed", err));
   }
   return orderView(db, sessionId);
 }

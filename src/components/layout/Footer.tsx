@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useI18n } from "@/i18n/client";
 import { LogoFull } from "@/components/brand/Logo";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
+import { COMPANY, companyAddress } from "@/lib/company";
 
 export function Footer() {
-  const { t, href } = useI18n();
+  const { t, href, fill } = useI18n();
   const f = t.footer;
   return (
     <footer className="border-t border-line bg-ink">
@@ -40,7 +41,14 @@ export function Footer() {
       </div>
       <div className="border-t border-line px-4 py-6 sm:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
-          <p className="text-xs text-mist">© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
+          <div className="text-center text-xs leading-relaxed text-mist sm:text-left">
+            <p>© {new Date().getFullYear()} Peacotex · {f.demoSite}</p>
+            {/* Seller details the EU requires on a web shop. */}
+            <p>
+              {fill(f.legal, { trade: COMPANY.tradeName, company: COMPANY.legalName })} · {companyAddress} · {f.vat} {COMPANY.vatNumber} ·{" "}
+              <a href={`mailto:${COMPANY.email}`} className="underline underline-offset-2 hover:text-gold">{COMPANY.email}</a>
+            </p>
+          </div>
           <PaymentMethods title={false} className="flex justify-center" />
         </div>
       </div>

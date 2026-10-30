@@ -72,6 +72,22 @@ and webhook secret in the Vercel project settings, and `NEXT_PUBLIC_SITE_URL`.
   (`vat_country`, `vat_rate`, `vat_cents`; EU OSS). Check the rates and whether you are over the
   €10 000 OSS threshold with your accountant.
 
+## Invoices and order emails
+
+- Seller: Peacotex is a trade name of LeoPers BV (`src/lib/company.ts`: address, VAT, register, bank).
+- In the bag the buyer chooses private or business. A business enters its VAT number, checked
+  against the EU VIES register (`src/server/vies.ts`): EU businesses outside Belgium pay without
+  VAT (reverse charge, shipping only to their own country), Norwegian businesses too (export),
+  Belgian businesses pay 21% Belgian VAT. Rules: `src/server/vat.ts`.
+- On payment the order gets its invoice in the same transaction (`src/server/invoice.ts`), numbered
+  per year without gaps (2026-0001…), frozen as data plus the PDF (`src/server/invoice-pdf.ts`,
+  bilingual: Dutch + the customer's language, fonts in `assets/fonts`).
+- The confirmation email (`src/server/order-mail.ts`) goes out in the customer's language with the
+  PDF attached and a copy to the shop, via Resend (`RESEND_API_KEY`, `MAIL_FROM`, `MAIL_COPY_TO`).
+  Without a key it is not sent in production; locally `MAIL_OUTBOX=1` writes it to `.data/outbox`.
+- Customers download the invoice from the confirmation page; the admin order page has the PDF and
+  "Send email again". `VIES_TEST=1` uses the EU test service (valid number `DE100`).
+
 ## Admin (`/admin`)
 
 Needs `DATABASE_URL` and `ADMIN_PASSWORD` (see `.env.example`); without them `/admin` explains what is missing.
