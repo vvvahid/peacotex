@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useI18n } from "@/i18n/client";
+import { LogoFull } from "@/components/brand/Logo";
 
 const MIN_VISIBLE_MS = 1200; // from first paint; long enough for the wordmark and the line to land
 const MAX_VISIBLE_MS = 2200; // never hold the page longer, even if `load` is slow
@@ -15,7 +15,6 @@ export const INTRO_DONE_EVENT = "ptx:intro-done";
  * Purely decorative for assistive tech (aria-hidden); content underneath is already in the DOM.
  */
 export function IntroCurtain() {
-  const { t } = useI18n();
   useEffect(() => {
     const root = document.documentElement;
     if (!root.classList.contains("intro")) return;
@@ -48,9 +47,8 @@ export function IntroCurtain() {
 
   return (
     <div aria-hidden className="intro-curtain">
-      <div className="intro-mark flex flex-col items-center leading-none">
-        <span className="font-serif text-[2.1rem] sm:text-[2.6rem] font-light tracking-[0.36em]">PEACOTEX</span>
-        <span className="mt-3 text-[0.75rem] tracking-[0.5em] uppercase text-champagne">{t.intro.tagline}</span>
+      <div className="intro-mark">
+        <LogoFull alt="" className="h-auto w-[min(78vw,30rem)]" />
       </div>
       <div className="h-px w-40 overflow-hidden bg-gold/20">
         <div className="intro-fill h-full w-full bg-gold" />

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/i18n/client";
+import { LogoFull } from "@/components/brand/Logo";
 import { PaymentMethods } from "@/components/ui/PaymentMethods";
 
 export function Footer() {
@@ -11,7 +12,7 @@ export function Footer() {
     <footer className="border-t border-line bg-ink">
       <div className="mx-auto grid max-w-[1400px] gap-12 px-4 py-16 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <p className="font-serif text-3xl font-light tracking-[0.3em]">PEACOTEX</p>
+          <LogoFull className="h-auto w-64" />
           <p className="mt-4 max-w-sm text-sm text-mist">{f.blurb}</p>
         </div>
         <div>
